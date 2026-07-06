@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TheValidator — Endpoint Health Checker</title>
+<style>
+/* ===== DESIGN TOKENS (AmpShield) ===== */
+:root {
+  --bg-root: #060b18;
+  --bg-surface: #0c1225;
+  --bg-elevated: #111830;
+  --bg-hover: #182040;
+  --bg-sidebar: #080e1c;
+  --border: #1a2540;
+  --border-light: #243055;
+  --text-primary: #e8ecf4;
+  --text-secondary: #8899bb;
+  --text-muted: #556888;
+  --accent: #0066ff;
+  --accent-dim: #0052cc;
+  --accent-glow: rgba(0,102,255,0.25);
+  --critical: #ff4444;
+  --critical-bg: #351520;
+  --high: #ff7722; --high-bg: #352215;
+  --medium: #e6b800; --medium-bg: #353015;
+  --low: #22cc66; --low-bg: #123020;
+  --radius-sm: 6px; --radius: 8px; --radius-lg: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  --sidebar-w: 240px; --topbar-h: 56px;
+}
+
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg-root);
+  color: var(--text-primary);
+  display: flex;
+  overflow: hidden;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+input,select,button{font-family:inherit;font-size:inherit}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+}
+.sidebar-logo {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+.sidebar-logo .bolt{color:var(--accent);font-size:22px}
+.sidebar-logo .sub{color:var(--text-muted);font-weight:400;font-size:13px;margin-left:2px}
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+  text-align: left;
+  width: 100%;
+}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--accent-glow);color:var(--accent);font-weight:600}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--critical-bg);
+  color: var(--critical);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.sidebar-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== MAIN ===== */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+  height: var(--topbar-h);
+  min-height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-root);
+}
+.topbar .page-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.topbar-right .time {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  border: 2px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ===== CONTENT AREA ===== */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.page{display:none}
+.page.active{display:block}
+
+/* ===== STAT CARDS ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  transition: border-color 0.15s;
+}
+.stat-card:hover{border-color:var(--border-light)}
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.stat-card .stat-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.stat-card.critical .stat-value{color:var(--critical)}
+.stat-card.warning .stat-value{color:var(--medium)}
+.stat-card.healthy .stat-value{color:var(--low)}
+.stat-card.info .stat-value{color:var(--accent)}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.card-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.card-body{padding:16px 20px}
+
+/* ===== TABLES ===== */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  white-space: nowrap;
+}
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+tbody tr{transition:background 0.1s;cursor:pointer}
+tbody tr:hover{background:var(--bg-hover)}
+tbody tr:last-child td{border-bottom:none}
+
+/* ===== STATUS BADGES ===== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-healthy{background:var(--low-bg);color:var(--low)}
+.badge-degraded{background:var(--medium-bg);color:var(--medium)}
+.badge-critical{background:var(--critical-bg);color:var(--critical)}
+.badge-offline{background:var(--bg-hover);color:var(--text-muted)}
+.badge-pass{background:var(--low-bg);color:var(--low)}
+.badge-fail{background:var(--critical-bg);color:var(--critical)}
+.badge-warn{background:var(--medium-bg);color:var(--medium)}
+.badge-info{background:var(--accent-glow);color:var(--accent)}
+
+/* ===== SEARCH & FILTERS ===== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.search-box {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-box:focus{border-color:var(--accent)}
+.search-box::placeholder{color:var(--text-muted)}
+.filter-select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  min-width: 130px;
+}
+.filter-select:focus{border-color:var(--accent)}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.btn:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-light)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text-secondary)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--critical);border-color:var(--border-light)}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* ===== DETAIL PAGE ===== */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.detail-header .back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.detail-header .back-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.detail-header h2{font-size:18px;font-weight:600}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.detail-info {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+.detail-info .info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.detail-info .info-row .label{color:var(--text-muted)}
+.detail-info .info-row .value{color:var(--text-primary);font-weight:500}
+
+/* ===== COMPARISON ===== */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.compare-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px}
+.compare-card h4{font-size:13px;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px}
+.compare-table{width:100%;font-size:13px}
+.compare-table td{padding:7px 0;border-bottom:1px solid var(--border);color:var(--text-secondary)}
+.compare-table td:last-child{text-align:right;font-weight:500}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-match{display:inline-flex;align-items:center;gap:4px}
+
+/* ===== ISSUES LIST ===== */
+.issue-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.issue-row:last-child{border-bottom:none}
+.issue-sev{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.issue-sev.critical{background:var(--critical)}
+.issue-sev.high{background:var(--high)}
+.issue-sev.medium{background:var(--medium)}
+.issue-sev.low{background:var(--low)}
+
+/* ===== HISTORY ===== */
+.history-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.history-item:last-child{border-bottom:none}
+.history-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.history-dot.pass{background:var(--low)}
+.history-dot.fail{background:var(--critical)}
+.history-dot.warn{background:var(--medium)}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:768px){
+  .sidebar{width:60px;min-width:60px}
+  .sidebar-logo span:not(.bolt){display:none}
+  .nav-item span:not(.icon){display:none}
+  .sidebar-footer{display:none}
+  .main{margin-left:60px}
+  .detail-grid,.compare-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="bolt">⚡</span>
+    <span>TheValidator <span class="sub">beta</span></span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-page="dashboard">
+      <span class="icon">📊</span><span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="assets">
+      <span class="icon">🖥️</span><span>Assets</span>
+      <span class="badge" id="total-badge">42</span>
+    </button>
+    <button class="nav-item" data-page="issues">
+      <span class="icon">⚠️</span><span>Issues</span>
+      <span class="badge" id="issues-badge">18</span>
+    </button>
+    <button class="nav-item" data-page="history">
+      <span class="icon">📋</span><span>History</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    TheValidator v1.0.0 &bull; Nous Research
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+  <header class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <span class="time" id="clock"></span>
+      <div class="avatar">AD</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ============================== -->
+    <!-- DASHBOARD PAGE                  -->
+    <!-- ============================== -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="dashboard-stats"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-header"><h3>🔝 Top Issues</h3></div>
+          <div class="card-body" id="top-issues"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>🔄 Severity Distribution</h3></div>
+          <div class="card-body" id="severity-dist"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- ASSETS PAGE                    -->
+    <!-- ============================== -->
+    <div class="page" id="page-assets">
+      <div class="toolbar">
+        <input class="search-box" id="asset-search" placeholder="Search hostname, IP, OS..." />
+        <select class="filter-select" id="filter-health"><option value="all">All Health States</option></select>
+        <select class="filter-select" id="filter-location"><option value="all">All Locations</option></select>
+        <select class="filter-select" id="filter-os"><option value="all">All OS</option></select>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Endpoints <span id="asset-count" style="color:var(--text-muted);font-weight:400"></span></h3>
+        </div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Hostname</th><th>IP</th><th>OS</th><th>Location</th><th>Health</th><th>Last Check</th><th>Checks</th><th>Status</th>
+          </tr></thead><tbody id="assets-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- ASSET DETAIL PAGE              -->
+    <!-- ============================== -->
+    <div class="page" id="page-detail">
+      <div class="detail-header">
+        <button class="back-btn" onclick="showPage('assets')">← Back to Assets</button>
+        <h2 id="detail-hostname">—</h2>
+        <span id="detail-badge" class="badge"></span>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-info">
+          <div class="info-row"><span class="label">IP Address</span><span class="value" id="detail-ip">—</span></div>
+          <div class="info-row"><span class="label">Operating System</span><span class="value" id="detail-os">—</span></div>
+          <div class="info-row"><span class="label">Location</span><span class="value" id="detail-loc">—</span></div>
+          <div class="info-row"><span class="label">Function</span><span class="value" id="detail-function">—</span></div>
+          <div class="info-row"><span class="label">Last Check</span><span class="value" id="detail-last">—</span></div>
+          <div class="info-row"><span class="label">Overall Health</span><span class="value" id="detail-health">—</span></div>
+          <div class="info-row"><span class="label">Compliance Trend</span><span class="value" id="detail-trend" style="color:var(--accent)">—</span></div>
+        </div>
+        <div class="detail-info">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="alert('Running health check on '+detailAsset.hostname+'... (simulated)' )">⚡ Run Health Check Now</button>
+            <button class="btn btn-sm" onclick="alert('Exporting report for '+detailAsset.hostname+'... (simulated)' )">📄 Export Report</button>
+            <button class="btn btn-sm" onclick="exportAllCommands(detailAsset.hostname)" style="border-color:var(--low)">📋 Export Fixes for PDQ/SCCM</button>
+            <a href="https://mrdchiang.github.io/amp-shield/#/findings?asset={{hostname}}" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
+            <a href="https://mrdchiang.github.io/remflow/#/deploy-fix?asset={{hostname}}" target="_blank" class="btn btn-sm" id="remflow-link" style="margin-top:0">🛠️ Remediate via RemFlow</a>
+          </div>
+          <div class="compare-match" style="font-size:13px;color:var(--text-muted);margin-top:4px">
+            Last verified: <span id="detail-verified">—</span>
+          </div>
+          <div id="cve-info-box" style="margin-top:10px;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);line-height:1.5">
+            AmpShield reports <span id="cve-count-value">0</span> active CVEs for this host type
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>🔍 Check Results</h3></div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Tool / Service</th><th>Expected</th><th>Actual</th><th>Result</th><th>Last Verified</th>
+          </tr></thead><tbody id="detail-checks"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>⚖️ Console vs. Endpoint Comparison</h3></div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Tool</th><th>Console Says</th><th>Endpoint Shows</th><th>Match?</th>
+          </tr></thead><tbody id="detail-compare"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>🏛️ GPO Compliance <span id="gpo-compliance-summary" style="font-weight:400;font-size:13px;color:var(--text-muted)"></span></h3></div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Policy</th><th>GPO Setting</th><th>Endpoint Value</th><th>Status</th><th>Warning</th><th>GPO Source</th><th>User Override</th><th>Fix Command</th><th>Resolve</th>
+          </tr></thead><tbody id="detail-gpo"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>👤 User Policy Impact <span id="user-policy-summary" style="font-weight:400;font-size:13px;color:var(--text-muted)"></span></h3></div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Policy</th><th>Type</th><th>Source GPO</th><th>Status</th><th>Last Applied</th><th>Conflict</th>
+          </tr></thead><tbody id="detail-user-policies"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- ISSUES PAGE                    -->
+    <!-- ============================== -->
+    <div class="page" id="page-issues">
+      <div class="toolbar">
+        <select class="filter-select" id="issue-severity"><option value="all">All Severities</option></select>
+        <select class="filter-select" id="issue-tool"><option value="all">All Tools</option></select>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>All Failed Checks <span id="issue-count" style="color:var(--text-muted);font-weight:400"></span></h3></div>
+        <div class="card-body table-wrap">
+          <table><thead><tr>
+            <th>Asset</th><th>Check</th><th>Expected</th><th>Actual</th><th>Severity</th><th>First Seen</th><th>Age</th><th>Status</th>
+          </tr></thead><tbody id="issues-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- HISTORY PAGE                   -->
+    <!-- ============================== -->
+    <div class="page" id="page-history">
+      <div class="card">
+        <div class="card-header"><h3>Health Check Run Log</h3></div>
+        <div class="card-body" id="history-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ===== DATA =====
+const LOCATIONS = ['HQ-NYC','HQ-SFO','DC-ATL','DC-CHI','DC-DAL','EU-LON','EU-FRA','APAC-SIN','APAC-TOK','REMOTE'];
+const OS_LIST = ['Windows 11 Enterprise','Windows 10 Enterprise','macOS 15 Sequoia','macOS 14 Sonoma','Ubuntu 24.04 LTS','RHEL 9.4','RHEL 8.10'];
+const OS_FAMILY = os => os.startsWith('Windows')?'Windows':os.startsWith('macOS')?'macOS':'Linux';
+
+const TOOLS = [
+  {name:'Endpoint Protection Agent',expected:'Running | Version 7.8+',console:'Running v7.9.2',failVal:'Stopped v7.6.1',warnVal:'Running v7.6.3'},
+  {name:'Security Service',expected:'Service Running',console:'Running (Auto)',failVal:'Stopped',warnVal:'Running (Manual)'},
+  {name:'Encryption Status',expected:'Encrypted (100%)',console:'Encrypted',failVal:'Unencrypted',warnVal:'Encryption Paused'},
+  {name:'Anti-Malware Engine',expected:'Real-time On | Up-to-date',console:'On + Up-to-date',failVal:'Real-time Off',warnVal:'Definitions Stale'},
+  {name:'Vulnerability Scanner Agent',expected:'Running | Version 6.4+',console:'Running v6.5.1',failVal:'Not Installed',warnVal:'Running v6.3.2'},
+  {name:'ZTNA Client',expected:'Connected | Tunnel Up',console:'Connected v4.5',failVal:'Disconnected',warnVal:'Connected v3.9'},
+  {name:'Config Mgmt Agent',expected:'Running | Site Connected',console:'Running + Connected',failVal:'Not Running',warnVal:'Running, Site Unreachable'},
+  {name:'OS Patch Level',expected:'Latest Rollup Applied',console:'KB5053598 (Apr 2026)',failVal:'Missing 4+ Critical',warnVal:'Missing 2 Security'},
+  {name:'Multi-Factor Auth',expected:'Registered | Up-to-date',console:'Registered v5.2.1',failVal:'Not Registered',warnVal:'Registration Expiring'}
+];
+
+const HEALTH_STATES = ['healthy','degraded','critical','offline'];
+const HEALTH_WEIGHTS = {healthy:4,degraded:3,critical:2,offline:1};
+
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function ip(){return randInt(10,192)+'.'+randInt(0,255)+'.'+randInt(0,255)+'.'+randInt(1,254)}
+function ago(days){let d=new Date();d.setDate(d.getDate()-days);return d.toISOString().slice(0,16).replace('T',' ')}
+function hostname(){const p=Math.random();if(p<0.3)return 'CORP-'+['WS','LT','VM','SRV'][randInt(0,3)]+randInt(1000,9999);if(p<0.6)return pick(['NYC','SFO','LON','FRA','SIN'])+'-'+pick(['WS','LT','MBP'])+randInt(100,999);return pick(['DESKTOP','LAPTOP','WORKSTATION'])+'-'+randInt(100000,999999)}
+
+// Generate asset: tools results
+function genChecks(){
+  const results=[];
+  for(const t of TOOLS){
+    const r=Math.random();
+    if(r<0.55){ // pass
+      results.push({name:t.name,expected:t.expected,actual:t.console,result:'pass',last:ago(randInt(0,2))});
+    }else if(r<0.78){ // fail
+      results.push({name:t.name,expected:t.expected,actual:t.failVal,result:'fail',last:ago(randInt(0,2))});
+    }else{ // warn
+      results.push({name:t.name,expected:t.expected,actual:t.warnVal,result:'warn',last:ago(randInt(0,2))});
+    }
+  }
+  return results;
+}
+function genCompare(checks){
+  return checks.map(c=>{
+    const t=TOOLS.find(t=>t.name===c.name);
+    return{name:c.name,console:t?t.console:'—',endpoint:c.actual,match:c.result==='pass'?'✅':'❌'};
+  });
+}
+function assetHealth(checks){
+  const fails=checks.filter(c=>c.result==='fail').length;
+  const warns=checks.filter(c=>c.result==='warn').length;
+  if(fails>=4) return 'critical';
+  if(fails>=2) return 'degraded';
+  if(warns>=3) return 'degraded';
+  return 'healthy';
+}
+
+function genAsset(i){
+  const checks=genChecks();
+  const os=pick(OS_LIST);
+  const loc=pick(LOCATIONS);
+  const func=pick(['Engineering','IT Operations','Security','Executive','Development','Staging','CI/CD','Infrastructure']);
+  const h=assetHealth(checks);
+  const lastCheck=ago(randInt(0,3));
+  // offline: force all as fail/unreachable
+  const isOffline=i%11===0;
+  const finalHealth=isOffline?'offline':h;
+  const finalChecks=isOffline?checks.map(c=>({...c,result:'fail',actual:'Unreachable',last:lastCheck})):checks;
+  const passed=finalChecks.filter(c=>c.result==='pass').length;
+
+  // Generate GPO compliance checks
+  const gpoPolicies=[
+    {name:'Password Policy — Min Length',gpoVal:'14 characters',endpointVal:pick(['14 characters','8 characters','12 characters','10 characters']),critical:true},
+    {name:'Password Policy — Complexity',gpoVal:'Enabled',endpointVal:pick(['Enabled','Disabled','Enabled','Enabled']),critical:true},
+    {name:'Account Lockout — Threshold',gpoVal:'5 attempts',endpointVal:pick(['5 attempts','3 attempts','10 attempts','5 attempts']),critical:true},
+    {name:'Audit — Logon Events',gpoVal:'Success + Failure',endpointVal:pick(['Success + Failure','Success Only','Failure Only','Success + Failure']),critical:false},
+    {name:'Audit — Account Management',gpoVal:'Success + Failure',endpointVal:pick(['Success + Failure','Success Only','Success + Failure','Disabled']),critical:false},
+    {name:'Windows Firewall — Domain',gpoVal:'Enabled — Block inbound',endpointVal:pick(['Enabled — Block inbound','Enabled — Allow all','Disabled','Enabled — Block inbound']),critical:true},
+    {name:'Windows Defender — Real-time',gpoVal:'Enabled',endpointVal:pick(['Enabled','Enabled','Enabled','Disabled']),critical:true},
+    {name:'BitLocker — OS Drive',gpoVal:'Required — TPM+PIN',endpointVal:pick(['Required — TPM+PIN','Required — TPM Only','Not Configured','Required — TPM+PIN']),critical:true},
+    {name:'UAC — Admin Approval',gpoVal:'Enabled — Prompt for consent',endpointVal:pick(['Enabled — Prompt for consent','Enabled — Prompt for creds','Disabled','Enabled — Prompt for consent']),critical:false},
+    {name:'Remote Desktop — Network Level Auth',gpoVal:'Enabled',endpointVal:pick(['Enabled','Disabled','Enabled','Enabled']),critical:true},
+    {name:'PowerShell — Script Block Logging',gpoVal:'Enabled',endpointVal:pick(['Enabled','Disabled','Enabled','Enabled']),critical:false},
+    {name:'LAPS — Local Admin Password',gpoVal:'Managed',endpointVal:pick(['Managed','Managed','Not Configured','Managed']),critical:true}
+  ];
+  const gpoResults=gpoPolicies.map(p=>({
+    ...p,
+    compliant:p.gpoVal===p.endpointVal?'Compliant':pick(['Non-Compliant','Non-Compliant','Non-Compliant','Error Retrieving']),
+    gpoSource:'Default Domain Policy',
+    userOverride:Math.random()>0.7?pick(['Local Admin Override','Conflicting User GPO','OU Policy Inheritance','Not Applicable']):null
+  }));
+
+  // Generate user policy impacts
+  const userPolicyTypes=['Logon Script','Drive Mapping','Folder Redirection','Registry Preference','Printer Mapping','AppLocker Rule','Group Policy Preference'];
+  const userPolicyImpacts=[];
+  const numUserPolicies=randInt(1,4);
+  for(let u=0;u<numUserPolicies;u++){
+    const type=pick(userPolicyTypes);
+    const status=pick(['Applied','Applied','Applied','Blocked (Inheritance)','Conflict','Pending Reboot']);
+    userPolicyImpacts.push({
+      name:type+': '+pick(['Map H: Drive to \\\\filesrv\\share','Set IE Proxy to corp-proxy:8080','Run login_audit.bat','Redirect Desktop to \\\\filesrv\\profiles','Map Printer \\\\printsvr\\HQ-Laser','Install cert corp-root-ca.cer','Set wallpaper to corporate-branding.png','Add trusted site *.corp.local']),
+      type:type,
+      source:pick(['Default Domain Policy','Finance OU Policy','Engineering OU Policy','Remote Access Policy','Local Security Policy']),
+      status:status,
+      lastApplied:ago(randInt(0,14)),
+      conflictingPolicy:status==='Conflict'?pick(['Local GPO: Disabled','Parent OU: Block Inheritance','Another GPO: Different Setting']):null
+    });
+  }
+
+  return{
+    hostname:hostname(),
+    ip:ip(),
+    os,
+    loc,
+    function:func,
+    health:finalHealth,
+    last:lastCheck,
+    passed,
+    total:finalChecks.length,
+    checks:finalChecks,
+    compare:genCompare(finalChecks),
+    gpo:gpoResults,
+    userPolicies:userPolicyImpacts,
+    isOffline
+  };
+}
+
+function generateAllAssets(){
+  const assets=[];
+  for(let i=1;i<=42;i++)assets.push(genAsset(i));
+  return assets;
+}
+
+let assets=generateAllAssets();
+let detailAsset=null;
+
+// ===== HELPERS =====
+function badgeHtml(state,text){
+  return `<span class="badge badge-${state}">${text||state.charAt(0).toUpperCase()+state.slice(1)}</span>`;
+}
+function resultIcon(r){
+  if(r==='pass') return '✅ Pass';
+  if(r==='fail') return '❌ Fail';
+  return '⚠ Warning';
+}
+function showToast(msg){
+  const existing=document.querySelector('.toast-msg');
+  if(existing) existing.remove();
+  const el=document.createElement('div');
+  el.className='toast-msg';
+  el.textContent=msg;
+  Object.assign(el.style,{
+    position:'fixed',bottom:'24px',right:'24px',zIndex:9999,
+    background:'var(--bg-elevated)',border:'1px solid var(--accent)',
+    color:'var(--text-primary)',padding:'12px 20px',borderRadius:'var(--radius)',
+    fontSize:'13px',boxShadow:'0 4px 20px rgba(0,0,0,0.5)',
+    opacity:'0',transform:'translateY(10px)',transition:'all 0.25s ease'
+  });
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{el.style.opacity='1';el.style.transform='translateY(0)'});
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(10px)';setTimeout(()=>el.remove(),300)},3000);
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const total=assets.length;
+  const healthy=assets.filter(a=>a.health==='healthy').length;
+  const degraded=assets.filter(a=>a.health==='degraded').length;
+  const critical=assets.filter(a=>a.health==='critical').length;
+  const offline=assets.filter(a=>a.health==='offline').length;
+  const passingAll=assets.filter(a=>a.checks.filter(c=>c.result!=='pass').length===0).length;
+  const compliance=Math.round((passingAll/total)*100);
+
+  document.getElementById('dashboard-stats').innerHTML=`
+    <div class="stat-card info"><div class="stat-label">Total Endpoints</div><div class="stat-value">${total}</div><div class="stat-sub">Across all locations</div></div>
+    <div class="stat-card healthy"><div class="stat-label">Healthy</div><div class="stat-value">${healthy}</div><div class="stat-sub">All checks passing</div></div>
+    <div class="stat-card warning"><div class="stat-label">Degraded</div><div class="stat-value">${degraded}</div><div class="stat-sub">Warnings or minor failures</div></div>
+    <div class="stat-card critical"><div class="stat-label">Critical</div><div class="stat-value">${critical}</div><div class="stat-sub">Requires immediate attention</div></div>
+    <div class="stat-card" style="border-color:${offline>0?'var(--critical)':'var(--border)'}"><div class="stat-label">Offline</div><div class="stat-value" style="color:${offline>0?'var(--critical)':'var(--text-primary)'}">${offline}</div><div class="stat-sub">No recent check-in</div></div>
+    <div class="stat-card healthy"><div class="stat-label">Compliance Rate</div><div class="stat-value">${compliance}%</div><div class="stat-sub">Passing all checks</div></div>
+  `;
+
+  // Top issues
+  const issueMap={};
+  assets.forEach(a=>{
+    a.checks.filter(c=>c.result!=='pass').forEach(c=>{
+      const key=c.name;
+      if(!issueMap[key]) issueMap[key]=0;
+      issueMap[key]++;
+    });
+  });
+  const sorted=Object.entries(issueMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('top-issues').innerHTML=sorted.length?sorted.map(([k,v])=>`
+    <div class="issue-row">
+      <span class="issue-sev ${v>5?'critical':v>3?'high':'medium'}"></span>
+      <span style="flex:1;color:var(--text-primary)">${k}</span>
+      <span style="color:var(--text-muted)">${v} endpoints</span>
+    </div>
+  `).join(''):'<div style="color:var(--text-muted);padding:12px">No issues found</div>';
+
+  // Severity distribution
+  const sevCounts={critical,high:0,medium:0,low:0};
+  assets.forEach(a=>{
+    a.checks.filter(c=>c.result==='fail').forEach(c=>{
+      if(c.name==='OS Patch Level') sevCounts.high++;
+      else if(c.name==='Encryption Status') sevCounts.medium++;
+      else sevCounts.low++;
+    });
+  });
+  const sevLabels=['critical','high','medium','low'];
+  const sevColors=['var(--critical)','var(--high)','var(--medium)','var(--low)'];
+  const sevBg=['var(--critical-bg)','var(--high-bg)','var(--medium-bg)','var(--low-bg)'];
+  const maxSev=Math.max(...sevLabels.map(s=>sevCounts[s]),1);
+  document.getElementById('severity-dist').innerHTML=sevLabels.map((s,i)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span style="color:${sevColors[i]};font-weight:600">${s.charAt(0).toUpperCase()+s.slice(1)}</span>
+        <span style="color:var(--text-muted)">${sevCounts[s]}</span>
+      </div>
+      <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden">
+        <div style="width:${(sevCounts[s]/maxSev)*100}%;height:100%;background:${sevColors[i]};border-radius:3px;transition:width 0.3s"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== ASSETS =====
+function renderAssets(){
+  const healthFilter=document.getElementById('filter-health').value;
+  const locFilter=document.getElementById('filter-location').value;
+  const osFilter=document.getElementById('filter-os').value;
+  const query=document.getElementById('asset-search').value.toLowerCase();
+
+  let filtered=assets.filter(a=>{
+    if(healthFilter!=='all' && a.health!==healthFilter) return false;
+    if(locFilter!=='all' && a.loc!==locFilter) return false;
+    if(osFilter!=='all'){const fam=OS_FAMILY(a.os);if(fam!==osFilter) return false;}
+    if(query && !a.hostname.toLowerCase().includes(query) && !a.ip.includes(query) && !a.os.toLowerCase().includes(query)) return false;
+    return true;
+  });
+
+  document.getElementById('asset-count').textContent='('+filtered.length+' shown)';
+  document.getElementById('assets-table').innerHTML=filtered.map(a=>{
+    const h=a.health;
+    return `<tr onclick="showDetail('${a.hostname}')">
+      <td style="font-weight:500;color:var(--text-primary)">${a.hostname}</td>
+      <td>${a.ip}</td>
+      <td>${a.os}</td>
+      <td>${a.loc}</td>
+      <td>${badgeHtml(h)}</td>
+      <td style="font-size:12px">${a.last}</td>
+      <td>${a.passed}/${a.total}</td>
+      <td>${badgeHtml(a.passed===a.total?'healthy':a.passed>=a.total-2?'degraded':'critical',a.passed===a.total?'✅ Pass':a.passed===0?'❌ All Fail':a.passed<a.total-2?'⚠ Critical':'⚠ Partial')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== ASSET DETAIL =====
+function showDetail(hostname){
+  const a=assets.find(x=>x.hostname===hostname);
+  if(!a) return;
+  detailAsset=a;
+  document.getElementById('detail-hostname').textContent=a.hostname;
+  document.getElementById('detail-badge').className=`badge badge-${a.health}`;
+  document.getElementById('detail-badge').textContent=a.health.charAt(0).toUpperCase()+a.health.slice(1);
+  document.getElementById('detail-ip').textContent=a.ip;
+  document.getElementById('detail-os').textContent=a.os;
+  document.getElementById('detail-loc').textContent=a.loc;
+  document.getElementById('detail-function').textContent=a.function||'—';
+  document.getElementById('detail-last').textContent=a.last;
+  document.getElementById('detail-health').innerHTML=badgeHtml(a.health);
+  document.getElementById('detail-verified').textContent=a.last;
+
+  document.getElementById('detail-checks').innerHTML=a.checks.map(c=>`
+    <tr>
+      <td style="font-weight:500;color:var(--text-primary)">${c.name}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${c.expected}</td>
+      <td style="${c.result==='fail'?'color:var(--critical)':c.result==='warn'?'color:var(--medium)':'color:var(--low)'}">${c.actual}</td>
+      <td>${resultIcon(c.result)}</td>
+      <td style="font-size:12px">${c.last}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('detail-compare').innerHTML=a.compare.map(c=>`
+    <tr>
+      <td style="font-weight:500;color:var(--text-primary)">${c.name}</td>
+      <td style="color:var(--low)">${c.console}</td>
+      <td style="${c.match==='❌'?'color:var(--critical)':'color:var(--text-secondary)'}">${c.endpoint}</td>
+      <td style="font-size:16px;text-align:center">${c.match}</td>
+    </tr>
+  `).join('');
+
+  // GPO compliance
+  const gpoComp=a.gpo||[];
+  const compliantCount=gpoComp.filter(p=>p.compliant==='Compliant').length;
+  document.getElementById('gpo-compliance-summary').textContent='('+compliantCount+'/'+gpoComp.length+' compliant)';
+
+  // Generate fix commands for non-compliant GPOs
+  function fixCommandForPolicy(p){
+    const cmds={
+      'Password Policy — Min Length':'powershell -Command "net accounts /minpwlen:14"',
+      'Password Policy — Complexity':'powershell -Command "net accounts /pwlength:14"',
+      'Account Lockout — Threshold':'powershell -Command "net accounts /lockoutthreshold:5"',
+      'Audit — Logon Events':'auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable',
+      'Audit — Account Management':'auditpol /set /subcategory:\"User Account Management\" /success:enable /failure:enable',
+      'Windows Firewall — Domain':'netsh advfirewall set domainprofile firewallpolicy blockinbound,allowoutbound',
+      'Windows Defender — Real-time':'powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $false"',
+      'BitLocker — OS Drive':'manage-bde -on C: -tp -pin',
+      'UAC — Admin Approval':'powershell -Command "Set-ItemProperty -Path HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System -Name EnableLUA -Value 1"',
+      'Remote Desktop — Network Level Auth':'powershell -Command "Set-ItemProperty -Path \'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\' -Name UserAuthentication -Value 1"',
+      'PowerShell — Script Block Logging':'powershell -Command "Set-ItemProperty -Path HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging -Name EnableScriptBlockLogging -Value 1"',
+      'LAPS — Local Admin Password':'powershell -Command "Set-LapsPolicy -ADBackupDirectory \\\\corp-dc-01\\LAPS"'
+    };
+    return cmds[p.name]||'powershell -Command "echo \'Manual remediation required\'"';
+  }
+
+  function copyToClipboard(text){
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Command copied to clipboard');
+  }
+
+  function exportAllCommands(hostname){
+    const nonComp=gpoComp.filter(p=>p.compliant!=='Compliant');
+    if(!nonComp.length){showToast('No non-compliant policies to fix');return;}
+    const cmds=nonComp.map(p=>'# Fix for: '+p.name+'\n# GPO expects: '+p.gpoVal+'\n# Current: '+p.endpointVal+'\n'+fixCommandForPolicy(p)).join('\n\n');
+    const header='# PDQ/SCCM Remediation Commands for '+hostname+'\n# Generated by TheValidator — '+(new Date().toISOString().slice(0,10))+'\n'+(nonComp.length>2?'# '+nonComp.length+' policies need attention\n':'\n');
+    const blob=new Blob([header+cmds],{type:'text/plain'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=hostname+'_remediation.ps1';
+    a.click();
+    showToast('Exported '+nonComp.length+' fix commands as PowerShell script');
+  }
+  
+  // Compliance trend
+  const trendPct = gpoComp.length > 0 ? Math.round(compliantCount / gpoComp.length * 100) : 0;
+  const trendBoost = randInt(2, 8);
+  document.getElementById('detail-trend').textContent = trendPct + '% → ' + (trendPct + trendBoost) + '% over 30 days';
+  
+  document.getElementById('detail-gpo').innerHTML=gpoComp.map(p=>{
+    const isComp=p.compliant==='Compliant';
+    const isDrift = !isComp && p.userOverride;
+    return `<tr>
+      <td style="font-weight:500;color:var(--text-primary)">${p.name}</td>
+      <td style="font-size:12px;color:var(--low)">${p.gpoVal}</td>
+      <td style="font-size:12px;${isComp?'color:var(--low)':'color:var(--critical)'}">${p.endpointVal}</td>
+      <td>${isComp?'<span class="badge badge-pass">Compliant</span>':'<span class="badge badge-fail">'+p.compliant+'</span>'}</td>
+      <td>${isDrift?'<span class="badge badge-fail" style="background:var(--critical-bg);color:var(--critical)">⚠ Drift Detected</span>':'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${p.gpoSource}</td>
+      <td style="font-size:12px;color:${p.userOverride?'var(--medium)':'var(--text-muted)'}">${p.userOverride||'—'}</td>
+      <td>${!isComp?'<button class="btn btn-sm btn-ghost" onclick="copyToClipboard(\''+fixCommandForPolicy(p).replace(/'/g,"\\'")+'\')" title="Copy to clipboard">📋 Cmd</button>':'—'}</td>
+      <td>${isDrift?'<button class="btn btn-sm btn-ghost" onclick="showToast(\'Suggested: Merge GPO and local policy settings\')">🔧 Resolve</button>':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // User policy impact
+  const ups=a.userPolicies||[];
+  document.getElementById('user-policy-summary').textContent='('+ups.length+' policies, '+ups.filter(p=>p.status==='Applied').length+' active)';
+  document.getElementById('detail-user-policies').innerHTML=ups.map(p=>{
+    const statusClass=p.status==='Applied'?'badge-success':p.status==='Conflict'||p.status==='Blocked (Inheritance)'?'badge-critical':'badge-warning';
+    return `<tr>
+      <td style="font-weight:500;color:var(--text-primary);font-size:13px">${p.name}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${p.type}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${p.source}</td>
+      <td><span class="badge ${statusClass}">${p.status}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${p.lastApplied}</td>
+      <td style="font-size:12px;color:var(--critical)">${p.conflictingPolicy||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Update ShieldView & RemFlow links with real hostname
+  document.getElementById('shield-link').href = 'https://mrdchiang.github.io/amp-shield/#/findings?asset=' + encodeURIComponent(a.hostname);
+  document.getElementById('remflow-link').href = 'https://mrdchiang.github.io/remflow/#/deploy-fix?asset=' + encodeURIComponent(a.hostname);
+
+  // Estimate CVE count based on hostname prefix (prefix = first segment before dash or underscore)
+  const prefix = (a.hostname || '').split(/[-_]/)[0].toUpperCase();
+  // Map prefix to approximate CVE counts
+  const cveMap = {
+    'CORP': randInt(12, 28),
+    'NYC': randInt(8, 18),
+    'SFO': randInt(6, 14),
+    'LON': randInt(10, 22),
+    'FRA': randInt(5, 12),
+    'SIN': randInt(4, 10),
+    'DESKTOP': randInt(3, 9),
+    'LAPTOP': randInt(5, 15),
+    'WORKSTATION': randInt(7, 16)
+  };
+  const cveCount = cveMap[prefix] || randInt(2, 12);
+  document.getElementById('cve-count-value').textContent = cveCount;
+
+  showPage('detail');
+}
+
+// ===== ISSUES =====
+function renderIssues(){
+  const sevFilter=document.getElementById('issue-severity').value;
+  const toolFilter=document.getElementById('issue-tool').value;
+  let allIssues=[];
+  assets.forEach(a=>{
+    a.checks.filter(c=>c.result!=='pass').forEach(c=>{
+      let sev='low';
+      if(c.name==='OS Patch Level') sev='critical';
+      else if(c.name==='Encryption Status'||c.name==='ZTNA Client'||c.name==='Multi-Factor Auth') sev='high';
+      else if(c.result==='fail') sev='high';
+      else sev='low';
+      allIssues.push({asset:a.hostname,check:c.name,expected:c.expected,actual:c.actual,severity:sev,firstSeen:ago(randInt(1,14)),age:randInt(1,30)+'d',status:sev==='critical'?'Open':'Open',a});
+    });
+  });
+
+  if(sevFilter!=='all') allIssues=allIssues.filter(i=>i.severity===sevFilter);
+  if(toolFilter!=='all') allIssues=allIssues.filter(i=>i.check===toolFilter);
+
+  document.getElementById('issue-count').textContent='('+allIssues.length+' issues)';
+  document.getElementById('issues-table').innerHTML=allIssues.map(i=>`
+    <tr onclick="showDetail('${i.asset}')">
+      <td style="font-weight:500;color:var(--text-primary)">${i.asset}</td>
+      <td>${i.check}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${i.expected}</td>
+      <td style="color:var(--critical)">${i.actual}</td>
+      <td>${badgeHtml(i.severity,i.severity.charAt(0).toUpperCase()+i.severity.slice(1))}</td>
+      <td style="font-size:12px">${i.firstSeen}</td>
+      <td style="font-size:12px">${i.age}</td>
+      <td>${badgeHtml(i.status==='Open'?'critical':'healthy',i.status)}</td>
+    </tr>
+  `).join('');
+}
+
+// ===== HISTORY =====
+function renderHistory(){
+  const types=['Scheduled','Manual'];
+  const entries=[];
+  for(let i=0;i<20;i++){
+    const d=new Date();
+    d.setHours(d.getHours()-i*randInt(2,8));
+    d.setMinutes(0);
+    const ts=d.toISOString().slice(0,16).replace('T',' ');
+    const count=randInt(38,42);
+    const passed=randInt(28,38);
+    const failed=count-passed;
+    const type=pick(types);
+    entries.push({ts,count,passed,failed,type});
+  }
+  document.getElementById('history-list').innerHTML=entries.map(e=>`
+    <div class="history-item">
+      <span class="history-dot ${e.failed===0?'pass':e.failed>5?'fail':'warn'}"></span>
+      <span style="font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:var(--text-muted);min-width:140px">${e.ts}</span>
+      <span style="flex:1;color:var(--text-primary)">${e.count} endpoints &bull; <span style="color:var(--low)">${e.passed} passed</span> &bull; <span style="color:${e.failed>0?'var(--critical)':'var(--text-muted)'}">${e.failed} failed</span></span>
+      <span class="badge badge-${e.type==='Scheduled'?'info':'healthy'}">${e.type}</span>
+    </div>
+  `).join('');
+
+  // Activity Feed card
+  const toolNames=TOOLS.map(t=>t.name);
+  const actItems=[];
+  // Pick random assets for activity
+  for(let i=0;i<12;i++){
+    const a=assets[randInt(0,assets.length-1)];
+    const h=randInt(1,168);
+    const type=Math.random();
+    let icon, desc, nav;
+    if(type<0.35){
+      const tool=pick(toolNames);
+      icon='🔴'; nav=`showPage('assets')`;
+      desc=`${tool} failed on ${a.hostname}`;
+    }else if(type<0.6){
+      icon='🟡'; nav=`showPage('assets')`;
+      desc=`Offline detection: ${a.hostname} unreachable since ${h<24?h+'h':Math.floor(h/24)+'d'} ago`;
+    }else if(type<0.85){
+      icon='🔴'; nav=`showPage('issues')`;
+      const issue=pick(['BitLocker policy','Password policy','Firewall rule','Defender real-time','UAC setting']);
+      desc=`GPO drift detected on ${a.hostname} (${issue})`;
+    }else{
+      icon='🟢'; nav=`showPage('assets')`;
+      desc=`${a.hostname} passed compliance check — ${a.passed}/${a.total} checks OK`;
+    }
+    actItems.push({icon,h,desc,nav,ts:a.last||ago(0)});
+  }
+  const sortedAct=actItems.sort((a,b)=>b.h-a.h).slice(0,10);
+  let actHtml=`<div class="card" style="margin-top:20px">
+<div class="card-header"><h3>🔔 Recent Activity</h3></div>
+<div class="card-body">`;
+  for(const a of sortedAct){
+    const rel=a.h<1?'just now':a.h<24?a.h+'h ago':Math.floor(a.h/24)+'d ago';
+    actHtml+=`<div class="activity-item" onclick="${a.nav}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+      <span style="font-size:18px">${a.icon}</span>
+      <div style="flex:1">
+        <div style="font-size:13px">${a.desc}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${rel}</div>
+      </div>
+      <span style="color:var(--text-muted);font-size:11px">${a.ts}</span>
+    </div>`;
+  }
+  actHtml+=`</div></div>`;
+  document.getElementById('history-list').insertAdjacentHTML('afterend',actHtml);
+}
+
+// ===== NAV / FILTER SETUP =====
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('page-'+name);
+  if(pg){pg.classList.add('active');document.querySelector(`.nav-item[data-page="${name}"]`).classList.add('active')}
+  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',detail:'Asset Detail'};
+  document.getElementById('page-title').textContent=titles[name]||'Dashboard';
+  if(name==='dashboard') renderDashboard();
+  if(name==='assets') renderAssets();
+  if(name==='issues') renderIssues();
+  if(name==='history') renderHistory();
+}
+
+// ===== DEEP LINK ROUTING =====
+function handleHash(){
+  const hash=location.hash.replace(/^#\/?/,'').split('/');
+  const page=hash[0]||'dashboard';
+  const param=hash.slice(1).join('/');
+  if(page==='asset'&&param){
+    const a=ASSETS.find(x=>x.hostname===decodeURIComponent(param));
+    if(a){showAssetDetail(decodeURIComponent(param));return}
+  }
+  if(['dashboard','assets','issues','history'].includes(page)){
+    showPage(page);
+  } else {
+    showPage('dashboard');
+  }
+}
+let _settingHash=false;
+const _origShow=showPage;
+showPage=function(name,param){
+  _origShow(name,param);
+  if(_settingHash) return;
+  _settingHash=true;
+  try{
+    if(name==='dashboard') history.replaceState(null,'','#');
+    else if(name==='detail'&&param) history.replaceState(null,'','#/asset/'+encodeURIComponent(param));
+    else history.replaceState(null,'','#/'+name);
+  }catch(e){}
+  setTimeout(()=>{_settingHash=false},100);
+};
+
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click',()=>showPage(el.dataset.page));
+});
+
+document.getElementById('asset-search').addEventListener('input',renderAssets);
+document.getElementById('filter-health').addEventListener('change',renderAssets);
+document.getElementById('filter-location').addEventListener('change',renderAssets);
+document.getElementById('filter-os').addEventListener('change',renderAssets);
+document.getElementById('issue-severity').addEventListener('change',renderIssues);
+document.getElementById('issue-tool').addEventListener('change',renderIssues);
+
+// ===== CLOCK =====
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateClock,10000);updateClock();
+
+// ===== INIT FILTERS =====
+function initFilters(){
+  const healthSel=document.getElementById('filter-health');
+  ['healthy','degraded','critical','offline'].forEach(s=>{
+    const o=document.createElement('option');o.value=s;o.textContent=s.charAt(0).toUpperCase()+s.slice(1);
+    healthSel.appendChild(o);
+  });
+  const locSel=document.getElementById('filter-location');
+  LOCATIONS.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;locSel.appendChild(o)});
+  const osSel=document.getElementById('filter-os');
+  ['Windows','macOS','Linux'].forEach(o=>{const el=document.createElement('option');el.value=o;el.textContent=o;osSel.appendChild(el)});
+
+  const sevSel=document.getElementById('issue-severity');
+  ['critical','high','medium','low'].forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s.charAt(0).toUpperCase()+s.slice(1);sevSel.appendChild(o)});
+  const toolSel=document.getElementById('issue-tool');
+  TOOLS.forEach(t=>{const o=document.createElement('option');o.value=t.name;o.textContent=t.name;toolSel.appendChild(o)});
+}
+
+initFilters();
+handleHash();
+</script>
+
+</body>
+</html>

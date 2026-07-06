@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Redirecting...</title>
+<script>
+(function(){
+  var path = location.pathname;
+  var base = '/thevalidator';
+  if (path.indexOf(base) === 0) path = path.slice(base.length);
+  if (path.charAt(0) === '/') path = path.slice(1);
+  var search = location.search;
+  location.replace(base + '/#' + (path || '') + search);
+})();
+</script>
+</head>
+<body>
+<p>Redirecting to <a href="#" id="link">the page</a>...</p>
+<noscript>JavaScript is required for this redirect.</noscript>
+<script>
+document.getElementById('link').href = (location.hash || '#').slice(1) || '/thevalidator/';
+</script>
+</body>
+</html>
