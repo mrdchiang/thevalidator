@@ -440,6 +440,10 @@ tbody tr:last-child td{border-bottom:none}
     <button class="nav-item" data-page="history">
       <span class="icon">📋</span><span>History</span>
     </button>
+    <button class="nav-item" onclick="showToast('Cross-tool pipeline linked to PatchFlow. Pending: '+(checkPendingFromQueue().length||0))" style="border-top:1px solid var(--border);margin-top:8px;padding-top:12px">
+      <span class="icon">🔗</span><span>Cross-Tool</span>
+      <span class="badge" id="cross-tool-badge" style="display:none">0</span>
+    </button>
   </nav>
   <div class="sidebar-footer">
     TheValidator v1.0.0 &bull; Nous Research
@@ -784,6 +788,23 @@ function renderDashboard(){
     <div class="stat-card" style="border-color:${offline>0?'var(--critical)':'var(--border)'}"><div class="stat-label">Offline</div><div class="stat-value" style="color:${offline>0?'var(--critical)':'var(--text-primary)'}">${offline}</div><div class="stat-sub">No recent check-in</div></div>
     <div class="stat-card healthy"><div class="stat-label">Compliance Rate</div><div class="stat-value">${compliance}%</div><div class="stat-sub">Passing all checks</div></div>
   `;
+
+  // Cross-tool: Show validated remediations from PatchFlow
+  const validated = checkValidatedRemediations();
+  if (validated.length > 0) {
+    const container = document.getElementById('dashboard-stats');
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px';
+    banner.innerHTML = `
+      <span style="font-size:24px">✅</span>
+      <div style="flex:1">
+        <div style="font-weight:600">${validated.length} fix${validated.length>1?'es':''} validated by TheValidator</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Remediations deployed via PatchFlow and verified on endpoints: ${validated.map(v => v.cve).join(', ')}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="showToast('Open PatchFlow for details')">View in PatchFlow</button>
+    `;
+    container.parentNode.insertBefore(banner, container);
+  }
 
   // Top issues
   const issueMap={};
@@ -1186,6 +1207,37 @@ function initFilters(){
 
 initFilters();
 handleHash();
+
+// Cross-tool bridge: read validated remediations from PatchFlow
+function checkValidatedRemediations() {
+  try {
+    return JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+  } catch(e) { return []; }
+}
+
+function checkPendingFromQueue() {
+  try {
+    return JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+  } catch(e) { return []; }
+}
+
+// Update sidebar badge with pending cross-tool count
+function updateCrossToolBadge() {
+  const pending = checkPendingFromQueue();
+  const badge = document.getElementById('cross-tool-badge');
+  if (badge) {
+    if (pending.length > 0) {
+      badge.textContent = pending.length;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+// Call on load and every 30s
+updateCrossToolBadge();
+setInterval(updateCrossToolBadge, 30000);
 </script>
 
 </body>
