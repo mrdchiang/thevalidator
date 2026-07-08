@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#060b18" rx="8"/>
+  <rect x="0" y="0" width="180" height="500" fill="#080e1c"/>
+  <rect x="170" y="0" width="1" height="500" fill="#1a2540"/>
+  <text x="20" y="32" font-family="sans-serif" font-size="13" font-weight="bold" fill="#e8ecf4">⚡ TheValidator</text>
+  <text x="130" y="32" font-family="sans-serif" font-size="10" fill="#0066ff"> beta</text>
+  <rect x="12" y="50" width="156" height="28" fill="#182040" rx="6"/>
+  <text x="24" y="69" font-family="sans-serif" font-size="13" fill="#8899bb">📊 Dashboard</text>
+  <text x="24" y="97" font-family="sans-serif" font-size="13" fill="#e8ecf4">🖥️ Assets 42</text>
+  <text x="24" y="125" font-family="sans-serif" font-size="13" fill="#e8ecf4">⚠️ Issues 18</text>
+  <text x="24" y="153" font-family="sans-serif" font-size="13" fill="#e8ecf4">📋 History</text>
+  <text x="24" y="181" font-family="sans-serif" font-size="13" fill="#e8ecf4">🔗 Cross-Tool</text>
+  <rect x="180" y="0" width="620" height="56" fill="#0c1225"/>
+  <text x="200" y="34" font-family="sans-serif" font-size="16" font-weight="600" fill="#e8ecf4">Dashboard</text>
+  <rect x="740" y="14" width="28" height="28" fill="#1a2540" rx="14"/>
+  <text x="748" y="33" font-family="sans-serif" font-size="14" fill="#e8ecf4">🌓</text>
+  <rect x="196" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="222" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Total Endpoints</text>
+  <text x="222" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#0066ff" text-anchor="middle">42</text>
+  <rect x="298" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="324" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Healthy</text>
+  <text x="324" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#22cc66" text-anchor="middle">28</text>
+  <rect x="400" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="426" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Degraded</text>
+  <text x="426" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#e6b800" text-anchor="middle">8</text>
+  <rect x="502" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="528" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Critical</text>
+  <text x="528" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ff4444" text-anchor="middle">4</text>
+  <rect x="604" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="630" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Offline</text>
+  <text x="630" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#e8ecf4" text-anchor="middle">2</text>
+  <rect x="706" y="72" width="92" height="64" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="732" y="94" font-family="sans-serif" font-size="12" fill="#556888" text-anchor="middle">Compliance</text>
+  <text x="732" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#22cc66" text-anchor="middle">67%</text>
+  <rect x="196" y="150" width="300" height="320" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="210" y="174" font-family="sans-serif" font-size="14" font-weight="600" fill="#e8ecf4">🔝 Top Issues</text>
+  <rect x="210" y="188" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="206" r="4" fill="#ff4444"/>
+  <text x="238" y="210" font-family="sans-serif" font-size="12" fill="#e8ecf4">OS Patch Level</text>
+  <text x="440" y="210" font-family="sans-serif" font-size="12" fill="#556888">14 endpoints</text>
+  <rect x="210" y="228" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="246" r="4" fill="#ff4444"/>
+  <text x="238" y="250" font-family="sans-serif" font-size="12" fill="#e8ecf4">Encryption Status</text>
+  <text x="440" y="250" font-family="sans-serif" font-size="12" fill="#556888">8 endpoints</text>
+  <rect x="210" y="268" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="286" r="4" fill="#ff7722"/>
+  <text x="238" y="290" font-family="sans-serif" font-size="12" fill="#e8ecf4">Config Mgmt Agent</text>
+  <text x="440" y="290" font-family="sans-serif" font-size="12" fill="#556888">6 endpoints</text>
+  <rect x="210" y="308" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="326" r="4" fill="#ff7722"/>
+  <text x="238" y="330" font-family="sans-serif" font-size="12" fill="#e8ecf4">Anti-Malware Engine</text>
+  <text x="440" y="330" font-family="sans-serif" font-size="12" fill="#556888">5 endpoints</text>
+  <rect x="210" y="348" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="366" r="4" fill="#e6b800"/>
+  <text x="238" y="370" font-family="sans-serif" font-size="12" fill="#e8ecf4">Multi-Factor Auth</text>
+  <text x="440" y="370" font-family="sans-serif" font-size="12" fill="#556888">3 endpoints</text>
+  <rect x="210" y="388" width="272" height="36" fill="#0c1225" rx="6"/>
+  <circle cx="224" cy="406" r="4" fill="#e6b800"/>
+  <text x="238" y="410" font-family="sans-serif" font-size="12" fill="#e8ecf4">ZTNA Client</text>
+  <text x="440" y="410" font-family="sans-serif" font-size="12" fill="#556888">2 endpoints</text>
+  <rect x="510" y="150" width="276" height="320" fill="#111830" rx="8" stroke="#1a2540" stroke-width="1"/>
+  <text x="524" y="174" font-family="sans-serif" font-size="14" font-weight="600" fill="#e8ecf4">🔄 Severity Distribution</text>
+  <rect x="530" y="195" width="240" height="18" fill="#351520" rx="4"/>
+  <rect x="530" y="195" width="96" height="18" fill="#ff4444" rx="4"/>
+  <text x="540" y="208" font-family="sans-serif" font-size="11" fill="#fff">Critical 12</text>
+  <rect x="530" y="225" width="240" height="18" fill="#352215" rx="4"/>
+  <rect x="530" y="225" width="156" height="18" fill="#ff7722" rx="4"/>
+  <text x="540" y="238" font-family="sans-serif" font-size="11" fill="#fff">High 16</text>
+  <rect x="530" y="255" width="240" height="18" fill="#353015" rx="4"/>
+  <rect x="530" y="255" width="204" height="18" fill="#e6b800" rx="4"/>
+  <text x="540" y="268" font-family="sans-serif" font-size="11" fill="#fff">Medium 18</text>
+  <rect x="530" y="285" width="240" height="18" fill="#123020" rx="4"/>
+  <rect x="530" y="285" width="108" height="18" fill="#22cc66" rx="4"/>
+  <text x="540" y="298" font-family="sans-serif" font-size="11" fill="#fff">Low 8</text>
+  <circle cx="540" cy="340" r="5" fill="#ff4444"/>
+  <text x="553" y="344" font-family="sans-serif" font-size="11" fill="#556888">Critical failures</text>
+  <circle cx="540" cy="360" r="5" fill="#ff7722"/>
+  <text x="553" y="364" font-family="sans-serif" font-size="11" fill="#556888">High severity</text>
+  <circle cx="540" cy="380" r="5" fill="#e6b800"/>
+  <text x="553" y="384" font-family="sans-serif" font-size="11" fill="#556888">Medium severity</text>
+  <circle cx="540" cy="400" r="5" fill="#22cc66"/>
+  <text x="553" y="404" font-family="sans-serif" font-size="11" fill="#556888">Low severity</text>
+  <rect x="196" y="440" width="590" height="40" fill="#123020" rx="8" stroke="#22cc66" stroke-width="1"/>
+  <text x="216" y="466" font-family="sans-serif" font-size="20">✅</text>
+  <text x="244" y="466" font-family="sans-serif" font-size="13" font-weight="600" fill="#e8ecf4">1 remediated finding verified — Last validated: CVE-2026-12345</text>
+  <rect x="710" y="448" width="60" height="22" fill="#123020" rx="9" stroke="#22cc66" stroke-width="1"/>
+  <text x="724" y="463" font-family="sans-serif" font-size="10" fill="#22cc66">Verified</text>
+</svg>
