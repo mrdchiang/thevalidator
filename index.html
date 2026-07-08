@@ -440,10 +440,6 @@ tbody tr:last-child td{border-bottom:none}
     <button class="nav-item" data-page="history">
       <span class="icon">📋</span><span>History</span>
     </button>
-    <button class="nav-item" onclick="showToast('Cross-tool pipeline linked to PatchFlow. Pending: '+(checkPendingFromQueue().length||0))" style="border-top:1px solid var(--border);margin-top:8px;padding-top:12px">
-      <span class="icon">🔗</span><span>Cross-Tool</span>
-      <span class="badge" id="cross-tool-badge" style="display:none">0</span>
-    </button>
   </nav>
   <div class="sidebar-footer">
     TheValidator v1.0.0 &bull; Nous Research
@@ -780,7 +776,30 @@ function renderDashboard(){
   const passingAll=assets.filter(a=>a.checks.filter(c=>c.result!=='pass').length===0).length;
   const compliance=Math.round((passingAll/total)*100);
 
-  document.getElementById('dashboard-stats').innerHTML=`
+  // Cross-tool banner
+  const pendingItems = checkCrossToolQueue();
+  const validatedItems = checkValidatedRemediations();
+  let bannerHtml = '';
+  if (validatedItems.length > 0) {
+    bannerHtml = `<div style="background:#123020;border:1px solid var(--low);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:20px">✅</span>
+      <div style="flex:1">
+        <div style="font-weight:600">${validatedItems.length} remediated finding${validatedItems.length>1?'s':''} verified</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Last validated: ${validatedItems[validatedItems.length-1].cve}</div>
+      </div>
+      <span class="badge badge-success">Verified</span>
+    </div>`;
+  } else if (pendingItems.length > 0) {
+    bannerHtml = `<div style="background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:20px">🔄</span>
+      <div style="flex:1">
+        <div style="font-weight:600">${pendingItems.length} remediation${pendingItems.length>1?'s':''} deployed — awaiting verification</div>
+      </div>
+      <span class="badge badge-warning">Pending</span>
+    </div>`;
+  }
+
+  document.getElementById('dashboard-stats').innerHTML= bannerHtml + `
     <div class="stat-card info"><div class="stat-label">Total Endpoints</div><div class="stat-value">${total}</div><div class="stat-sub">Across all locations</div></div>
     <div class="stat-card healthy"><div class="stat-label">Healthy</div><div class="stat-value">${healthy}</div><div class="stat-sub">All checks passing</div></div>
     <div class="stat-card warning"><div class="stat-label">Degraded</div><div class="stat-value">${degraded}</div><div class="stat-sub">Warnings or minor failures</div></div>
@@ -788,23 +807,6 @@ function renderDashboard(){
     <div class="stat-card" style="border-color:${offline>0?'var(--critical)':'var(--border)'}"><div class="stat-label">Offline</div><div class="stat-value" style="color:${offline>0?'var(--critical)':'var(--text-primary)'}">${offline}</div><div class="stat-sub">No recent check-in</div></div>
     <div class="stat-card healthy"><div class="stat-label">Compliance Rate</div><div class="stat-value">${compliance}%</div><div class="stat-sub">Passing all checks</div></div>
   `;
-
-  // Cross-tool: Show validated remediations from PatchFlow
-  const validated = checkValidatedRemediations();
-  if (validated.length > 0) {
-    const container = document.getElementById('dashboard-stats');
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px';
-    banner.innerHTML = `
-      <span style="font-size:24px">✅</span>
-      <div style="flex:1">
-        <div style="font-weight:600">${validated.length} fix${validated.length>1?'es':''} validated by TheValidator</div>
-        <div style="font-size:12px;color:var(--text-secondary)">Remediations deployed via PatchFlow and verified on endpoints: ${validated.map(v => v.cve).join(', ')}</div>
-      </div>
-      <button class="btn btn-sm btn-primary" onclick="showToast('Open PatchFlow for details')">View in PatchFlow</button>
-    `;
-    container.parentNode.insertBefore(banner, container);
-  }
 
   // Top issues
   const issueMap={};
@@ -1187,6 +1189,15 @@ function updateClock(){
 }
 setInterval(updateClock,10000);updateClock();
 
+// ===== CROSS-TOOL BRIDGE (localStorage) =====
+function checkCrossToolQueue() {
+  try { return JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]').filter(i => i.status === 'pending'); }
+  catch(e) { return []; }
+}
+function checkValidatedRemediations() {
+  try { return JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]'); }
+  catch(e) { return []; }
+}
 // ===== INIT FILTERS =====
 function initFilters(){
   const healthSel=document.getElementById('filter-health');
@@ -1207,37 +1218,6 @@ function initFilters(){
 
 initFilters();
 handleHash();
-
-// Cross-tool bridge: read validated remediations from PatchFlow
-function checkValidatedRemediations() {
-  try {
-    return JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
-  } catch(e) { return []; }
-}
-
-function checkPendingFromQueue() {
-  try {
-    return JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
-  } catch(e) { return []; }
-}
-
-// Update sidebar badge with pending cross-tool count
-function updateCrossToolBadge() {
-  const pending = checkPendingFromQueue();
-  const badge = document.getElementById('cross-tool-badge');
-  if (badge) {
-    if (pending.length > 0) {
-      badge.textContent = pending.length;
-      badge.style.display = '';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
-}
-
-// Call on load and every 30s
-updateCrossToolBadge();
-setInterval(updateCrossToolBadge, 30000);
 </script>
 
 </body>
