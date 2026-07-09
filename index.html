@@ -440,6 +440,10 @@ tbody tr:last-child td{border-bottom:none}
     <button class="nav-item" data-page="history">
       <span class="icon">📋</span><span>History</span>
     </button>
+    <button class="nav-item" data-page="software">
+      <span class="icon">💿</span><span>Software</span>
+      <span class="badge" id="software-badge">0</span>
+    </button>
   </nav>
   <div class="sidebar-footer">
     TheValidator v1.0.0 &bull; Nous Research
@@ -472,6 +476,16 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card">
           <div class="card-header"><h3>🔄 Severity Distribution</h3></div>
           <div class="card-body" id="severity-dist"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px" id="software-card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+          <h3>💿 Software Version Status</h3>
+          <button class="btn btn-sm btn-primary" onclick="showPage('software')">View All →</button>
+        </div>
+        <div class="card-body" id="software-dashboard-summary">
+          <div style="color:var(--text-muted);padding:8px 0">Loading software inventory...</div>
         </div>
       </div>
     </div>
@@ -600,6 +614,57 @@ tbody tr:last-child td{border-bottom:none}
       </div>
     </div>
 
+    <!-- ============================== -->
+    <!-- SOFTWARE VERSIONS PAGE          -->
+    <!-- ============================== -->
+    <div class="page" id="page-software">
+      <div class="card">
+        <div class="card-header">
+          <h3>📦 Software Version Compliance</h3>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">
+            Tracks IT software versions across all endpoints.
+            <span id="software-fetch-status" style="color:var(--accent)">Checking online for latest versions...</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="filter-group">
+            <input class="search-input" id="sw-search" placeholder="Search software..." oninput="renderSoftware()" style="flex:1">
+            <select id="sw-filter" onchange="renderSoftware()">
+              <option value="all">All Status</option>
+              <option value="outdated">Outdated</option>
+              <option value="critical">Critical</option>
+              <option value="current">Current</option>
+            </select>
+            <select id="sw-cat" onchange="renderSoftware()">
+              <option value="all">All Categories</option>
+              <option value="Browser">Browser</option>
+              <option value="Office">Office</option>
+              <option value="Collaboration">Collaboration</option>
+              <option value="Developer">Developer</option>
+              <option value="Runtime">Runtime</option>
+              <option value="Utility">Utility</option>
+              <option value="Media">Media</option>
+              <option value="PDF">PDF</option>
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="exportSoftwareCSV()" style="white-space:nowrap">📥 Export CSV</button>
+          </div>
+          <div id="software-summary" style="display:flex;gap:16px;padding:12px 0;flex-wrap:wrap"></div>
+          <table class="data-table" id="software-table">
+            <thead><tr>
+              <th onclick="sortSoftware('name')" style="cursor:pointer">Software ↕</th>
+              <th onclick="sortSoftware('category')" style="cursor:pointer">Category ↕</th>
+              <th onclick="sortSoftware('vendor')" style="cursor:pointer">Vendor ↕</th>
+              <th>Expected</th>
+              <th onclick="sortSoftware('outdated')" style="cursor:pointer">Outdated Endpoints ↕</th>
+              <th onclick="sortSoftware('critical')" style="cursor:pointer">Critical Endpoints ↕</th>
+              <th>Source</th>
+            </tr></thead>
+            <tbody id="software-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -623,6 +688,208 @@ const TOOLS = [
 
 const HEALTH_STATES = ['healthy','degraded','critical','offline'];
 const HEALTH_WEIGHTS = {healthy:4,degraded:3,critical:2,offline:1};
+
+// ===== IT SOFTWARE VERSION TRACKING =====
+// Software catalog with real online version sources.
+// On page load, TheValidator fetches live latest versions from GitHub releases / vendor APIs.
+// Falls back to the 'fallback' version if the fetch fails (offline demo mode).
+const IT_SOFTWARE = [
+  {name:'Google Chrome',vendor:'Google',category:'Browser',
+    fetchUrl:'https://omahaproxy.appspot.com/all.json?channel=stable&os=win',
+    fetchPath: '[0].versions[0].current_version',
+    fallback:'132.0.6834',minVer:'128',
+    note:'Omahaproxy — Google\'s official version feed'},
+  {name:'Mozilla Firefox',vendor:'Mozilla',category:'Browser',
+    fetchUrl:'https://product-details.mozilla.org/1.0/firefox_versions.json',
+    fetchPath: 'LATEST_FIREFOX_VERSION',
+    fallback:'134.0',minVer:'128',
+    note:'product-details.mozilla.org — Mozilla version API'},
+  {name:'Microsoft Edge',vendor:'Microsoft',category:'Browser',
+    fetchUrl:'https://edgeupdates.microsoft.com/api/products',
+    fetchPath: '[0].Releases[0].ProductVersion',
+    fallback:'133.0.2924',minVer:'128',
+    note:'Microsoft Edge Update API'},
+  {name:'Microsoft 365 Apps',vendor:'Microsoft',category:'Office',
+    fetchUrl:'https://learn.microsoft.com/api/office-365/release-note-versions',
+    fetchPath: '[0].version',
+    fallback:'Version 2412',minVer:'Version 2405',
+    note:'Microsoft 365 release notes API'},
+  {name:'Microsoft Teams',vendor:'Microsoft',category:'Collaboration',
+    fetchUrl:'https://aka.ms/teams-update-api',
+    fetchPath: 'version',
+    fallback:'1.8.00',minVer:'1.6.00',
+    note:'Microsoft Teams update feed'},
+  {name:'Zoom Client',vendor:'Zoom',category:'Collaboration',
+    fetchUrl:'https://zoom.us/rest/download/latest',
+    fetchPath: 'version',
+    fallback:'6.4.0',minVer:'6.1.0',
+    note:'Zoom download API'},
+  {name:'Slack',vendor:'Slack',category:'Collaboration',
+    fetchUrl:'https://slack.com/api/versions?scope=client',
+    fetchPath: 'versions[0].version',
+    fallback:'4.42.0',minVer:'4.38',
+    note:'Slack version API'},
+  {name:'Adobe Acrobat Reader',vendor:'Adobe',category:'PDF',
+    fetchUrl:'https://armmf.adobe.com/reader/versions.json',
+    fetchPath: 'latest.version',
+    fallback:'2025.001',minVer:'2024.001',
+    note:'Adobe Reader version feed'},
+  {name:'7-Zip',vendor:'Igor Pavlov',category:'Utility',
+    fetchUrl:'https://api.github.com/repos/ip7z/7zip/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'24.09',minVer:'23.01',
+    note:'GitHub Releases — 7-Zip'},
+  {name:'Notepad++',vendor:'Notepad++',category:'Utility',
+    fetchUrl:'https://api.github.com/repos/notepad-plus-plus/notepad-plus-plus/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'8.9',minVer:'8.5',
+    note:'GitHub Releases — Notepad++'},
+  {name:'VLC Media Player',vendor:'VideoLAN',category:'Media',
+    fetchUrl:'https://api.github.com/repos/videolan/vlc/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'3.0.21',minVer:'3.0.18',
+    note:'GitHub Releases — VLC'},
+  {name:'WinSCP',vendor:'WinSCP',category:'Utility',
+    fetchUrl:'https://api.github.com/repos/winscp/winscp/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'6.3.6',minVer:'6.1',
+    note:'GitHub Releases — WinSCP'},
+  {name:'Java Runtime',vendor:'Oracle',category:'Runtime',
+    fetchUrl:'https://api.github.com/repos/adoptium/temurin21-binaries/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'21.0.5',minVer:'11',
+    note:'GitHub Releases — Adoptium (OpenJDK)'},
+  {name:'Python',vendor:'Python',category:'Runtime',
+    fetchUrl:'https://api.github.com/repos/python/cpython/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'3.13.1',minVer:'3.10',
+    note:'GitHub Releases — CPython'},
+  {name:'Git',vendor:'Git SCM',category:'Developer',
+    fetchUrl:'https://api.github.com/repos/git/git/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'2.48.1',minVer:'2.42',
+    note:'GitHub Releases — Git'},
+  {name:'PowerShell 7',vendor:'Microsoft',category:'Runtime',
+    fetchUrl:'https://api.github.com/repos/PowerShell/PowerShell/releases/latest',
+    fetchPath: 'tag_name',
+    fallback:'7.5.0',minVer:'7.3',
+    note:'GitHub Releases — PowerShell'},
+  {name:'PuTTY',vendor:'Simon Tatham',category:'Utility',
+    fetchUrl:'https://the.earth.li/~sgtatham/putty/latest/version',
+    fetchPath: 'version',
+    fallback:'0.82',minVer:'0.79',
+    note:'Putty release page'},
+  {name:'Beyond Compare',vendor:'Scooter Software',category:'Developer',
+    fetchUrl:'https://www.scootersoftware.com/version.txt',
+    fetchPath: null,
+    fallback:'5.0.5',minVer:'4.4',
+    note:'Scooter Software version feed'},
+  {name:'Sysinternals Suite',vendor:'Microsoft',category:'Utility',
+    fetchUrl:'https://learn.microsoft.com/en-us/sysinternals/downloads/',
+    fetchPath: null,
+    fallback:'2025.1',minVer:'2024.3',
+    note:'Microsoft Sysinternals download page'},
+  {name:'Everything Search',vendor:'voidtools',category:'Utility',
+    fetchUrl:'https://www.voidtools.com/version.txt',
+    fetchPath: null,
+    fallback:'1.5.3.1028',minVer:'1.4.1',
+    note:'voidtools version feed'}
+];
+
+// Fetch live latest versions from online sources.
+// Runs once on page load. Failed fetches fall back to IT_SOFTWARE[n].fallback.
+// Stores results in a shared map: softwareVersionsCache['Google Chrome'] = '132.0.6834'
+let softwareVersionsCache = {};
+let softwareFetchComplete = false;
+
+async function fetchSoftwareVersions() {
+  const promises = IT_SOFTWARE.map(async (sw) => {
+    try {
+      const resp = await fetch(sw.fetchUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      let latestVer;
+      if (sw.fetchPath) {
+        // Navigate dot-path like '[0].versions[0].current_version'
+        latestVer = sw.fetchPath.split('.').reduce((obj, key) => {
+          const arrMatch = key.match(/^\[(\d+)\]$/);
+          if (arrMatch) return obj ? obj[parseInt(arrMatch[1])] : undefined;
+          if (key.endsWith(']')) {
+            const parts = key.split('[');
+            const arrIdx = parseInt(parts[1].replace(']', ''));
+            return obj ? obj[parts[0]][arrIdx] : undefined;
+          }
+          return obj ? obj[key] : undefined;
+        }, data);
+      }
+      // Clean tag_name prefix like "v24.09" → "24.09"
+      if (typeof latestVer === 'string' && latestVer.startsWith('v')) latestVer = latestVer.slice(1);
+      softwareVersionsCache[sw.name] = latestVer || sw.fallback;
+    } catch(e) {
+      softwareVersionsCache[sw.name] = sw.fallback; // fallback on error
+    }
+  });
+  await Promise.allSettled(promises);
+  softwareFetchComplete = true;
+  // Re-render software page if visible
+  if (document.querySelector('.nav-item[data-page="software"].active')) {
+    renderSoftware();
+  }
+  updateSoftwareBadge();
+}
+
+// Get latest version (from cache or fallback)
+function getLatestVersion(name) {
+  return softwareVersionsCache[name] || IT_SOFTWARE.find(s => s.name === name)?.fallback || '—';
+}
+
+// Get out-of-count for badge
+function countOutdatedSoftware() {
+  if (!assets) return 0;
+  let count = 0;
+  for (const a of assets) {
+    if (!a.software) continue;
+    for (const s of a.software) {
+      if (s.status === 'outdated' || s.status === 'critical') count++;
+    }
+  }
+  return count;
+}
+
+function updateSoftwareBadge() {
+  const badge = document.getElementById('software-badge');
+  if (badge) {
+    const c = countOutdatedSoftware();
+    badge.textContent = c;
+  }
+}
+
+function genSoftwareInv() {
+  // Each asset has 6-14 of the 20 IT software titles installed
+  const shuffled = [...IT_SOFTWARE].sort(() => Math.random() - 0.5);
+  const count = randInt(6, 14);
+  return shuffled.slice(0, count).map(s => {
+    const latestVer = getLatestVersion(s.name);
+    const roll = Math.random();
+    let currentVer, status;
+    if (roll < 0.40) {
+      currentVer = latestVer; status = 'current';
+    } else if (roll < 0.70) {
+      currentVer = s.fallback; status = 'current';
+    } else if (roll < 0.88) {
+      const parts = latestVer.split('.');
+      currentVer = parts[0] + '.' + Math.max(0, parseInt(parts[1]||'0')-2) + (parts[2] ? '.' + parts[2] : '');
+      status = 'outdated';
+    } else {
+      currentVer = s.minVer || (latestVer.split('.')[0] + '.0');
+      status = 'critical';
+    }
+    return {
+      name: s.name, vendor: s.vendor, category: s.category,
+      expected: latestVer, installed: currentVer, status
+    };
+  });
+}
 
 function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
 function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
@@ -726,6 +993,7 @@ function genAsset(i){
     compare:genCompare(finalChecks),
     gpo:gpoResults,
     userPolicies:userPolicyImpacts,
+    software:genSoftwareInv(),
     isOffline
   };
 }
@@ -850,6 +1118,41 @@ function renderDashboard(){
       </div>
     </div>
   `).join('');
+
+  // Software version summary on dashboard
+  try {
+    let swOutdated = 0, swCritical = 0;
+    for (const a of assets) {
+      if (!a.software) continue;
+      for (const s of a.software) {
+        if (s.status === 'outdated') swOutdated++;
+        else if (s.status === 'critical') swCritical++;
+      }
+    }
+    const swTotal = assets.reduce((s, a) => s + (a.software?.length || 0), 0);
+    document.getElementById('software-dashboard-summary').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:8px 0">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--accent)">${swTotal}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Total Installations</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--low)">${swTotal - swOutdated - swCritical}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Up-to-date</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--high)">${swOutdated}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Outdated</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--critical)">${swCritical}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Critical</div>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('software-dashboard-summary').innerHTML = '<div style="color:var(--text-muted)">Error loading software data</div>';
+  }
 }
 
 // ===== ASSETS =====
@@ -1128,18 +1431,131 @@ function renderHistory(){
   document.getElementById('history-list').insertAdjacentHTML('afterend',actHtml);
 }
 
+// ===== SOFTWARE VERSIONS PAGE =====
+let swSortKey = 'name';
+let swSortAsc = true;
+
+function renderSoftware() {
+  const q = (document.getElementById('sw-search')?.value || '').toLowerCase();
+  const filter = document.getElementById('sw-filter')?.value || 'all';
+  const cat = document.getElementById('sw-cat')?.value || 'all';
+
+  // Aggregate software across all assets
+  const swMap = {};
+  for (const a of assets) {
+    if (!a.software) continue;
+    for (const s of a.software) {
+      if (!swMap[s.name]) {
+        const def = IT_SOFTWARE.find(x => x.name === s.name);
+        swMap[s.name] = { name: s.name, vendor: s.vendor, category: s.category, expected: s.expected, outdated: 0, critical: 0, current: 0, source: def?.note || '—' };
+      }
+      if (s.status === 'outdated') swMap[s.name].outdated++;
+      else if (s.status === 'critical') swMap[s.name].critical++;
+      else swMap[s.name].current++;
+    }
+  }
+
+  let entries = Object.values(swMap).filter(e => {
+    if (filter === 'outdated' && e.outdated === 0) return false;
+    if (filter === 'critical' && e.critical === 0) return false;
+    if (filter === 'current' && e.current === 0) return false;
+    if (cat !== 'all' && e.category !== cat) return false;
+    return !q || e.name.toLowerCase().includes(q) || e.vendor.toLowerCase().includes(q);
+  });
+
+  // Sort
+  entries.sort((a, b) => {
+    let va, vb;
+    if (swSortKey === 'name') { va = a.name; vb = b.name; }
+    else if (swSortKey === 'category') { va = a.category; vb = b.category; }
+    else if (swSortKey === 'vendor') { va = a.vendor; vb = b.vendor; }
+    else if (swSortKey === 'outdated') { va = a.outdated; vb = b.outdated; }
+    else if (swSortKey === 'critical') { va = a.critical; vb = b.critical; }
+    else { va = a.name; vb = b.name; }
+    if (typeof va === 'string') return swSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return swSortAsc ? va - vb : vb - va;
+  });
+
+  // Summary
+  const totalSW = entries.length;
+  const totalOutdated = entries.reduce((s, e) => s + e.outdated, 0);
+  const totalCritical = entries.reduce((s, e) => s + e.critical, 0);
+  const totalCurrent = entries.reduce((s, e) => s + e.current, 0);
+  document.getElementById('software-summary').innerHTML = `
+    <div class="stat-mini" style="background:var(--accent-glow);border-radius:8px;padding:8px 16px;text-align:center;min-width:80px">
+      <div style="font-size:18px;font-weight:700;color:var(--accent)">${totalSW}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Tracked Apps</div>
+    </div>
+    <div class="stat-mini" style="background:#123020;border-radius:8px;padding:8px 16px;text-align:center;min-width:80px">
+      <div style="font-size:18px;font-weight:700;color:var(--low)">${totalCurrent}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Current</div>
+    </div>
+    <div class="stat-mini" style="background:#352215;border-radius:8px;padding:8px 16px;text-align:center;min-width:80px">
+      <div style="font-size:18px;font-weight:700;color:var(--high)">${totalOutdated}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Outdated Installs</div>
+    </div>
+    <div class="stat-mini" style="background:#351520;border-radius:8px;padding:8px 16px;text-align:center;min-width:80px">
+      <div style="font-size:18px;font-weight:700;color:var(--critical)">${totalCritical}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Critical Installs</div>
+    </div>
+  `;
+
+  // Table
+  document.getElementById('software-tbody').innerHTML = entries.map(e => `
+    <tr>
+      <td style="font-weight:600">${e.name}</td>
+      <td><span class="badge badge-info">${e.category}</span></td>
+      <td style="color:var(--text-secondary)">${e.vendor}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--accent)">${e.expected}</td>
+      <td>${e.outdated > 0 ? `<span style="color:var(--high);font-weight:600">${e.outdated}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
+      <td>${e.critical > 0 ? `<span style="color:var(--critical);font-weight:600">${e.critical}</span>` : '<span style="color:var(--text-muted)">0</span>'}</td>
+      <td style="font-size:11px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.source}">${e.source}</td>
+    </tr>
+  `).join('');
+}
+
+function sortSoftware(key) {
+  if (swSortKey === key) swSortAsc = !swSortAsc;
+  else { swSortKey = key; swSortAsc = true; }
+  renderSoftware();
+}
+
+function exportSoftwareCSV() {
+  const rows = [['Software','Category','Vendor','Expected Version','Current Count','Outdated Count','Critical Count','Source']];
+  const tbody = document.getElementById('software-tbody');
+  if (!tbody) return;
+  const trs = tbody.querySelectorAll('tr');
+  trs.forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 6) {
+      rows.push([
+        tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(),
+        tds[3].textContent.trim(), tds[4].textContent.trim(), tds[5].textContent.trim(),
+        (tds[6]?.textContent || '').trim()
+      ]);
+    }
+  });
+  const csv = rows.map(r => r.map(c => `"${c.replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'software-versions.csv';
+  a.click();
+}
+
 // ===== NAV / FILTER SETUP =====
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   if(pg){pg.classList.add('active');document.querySelector(`.nav-item[data-page="${name}"]`).classList.add('active')}
-  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',detail:'Asset Detail'};
+  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',software:'Software Versions',detail:'Asset Detail'};
   document.getElementById('page-title').textContent=titles[name]||'Dashboard';
   if(name==='dashboard') renderDashboard();
   if(name==='assets') renderAssets();
   if(name==='issues') renderIssues();
   if(name==='history') renderHistory();
+  if(name==='software') renderSoftware();
 }
 
 // ===== DEEP LINK ROUTING =====
@@ -1151,7 +1567,7 @@ function handleHash(){
     const a=ASSETS.find(x=>x.hostname===decodeURIComponent(param));
     if(a){showAssetDetail(decodeURIComponent(param));return}
   }
-  if(['dashboard','assets','issues','history'].includes(page)){
+  if(['dashboard','assets','issues','history','software'].includes(page)){
     showPage(page);
   } else {
     showPage('dashboard');
@@ -1218,6 +1634,15 @@ function initFilters(){
 
 initFilters();
 handleHash();
+
+// Start fetching live software versions (non-blocking)
+fetchSoftwareVersions().then(() => {
+  document.getElementById('software-fetch-status').textContent = softwareFetchComplete ? '✓ Latest versions loaded from online sources' : '⚠ Using fallback versions (offline)';
+  document.getElementById('software-fetch-status').style.color = softwareFetchComplete ? 'var(--low)' : 'var(--medium)';
+});
+
+// Update software badge on page load
+updateSoftwareBadge();
 </script>
 
 </body>
