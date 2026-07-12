@@ -534,11 +534,11 @@ tbody tr:last-child td{border-bottom:none}
         </div>
         <div class="detail-info">
           <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="alert('Running health check on '+detailAsset.hostname+'... (simulated)' )">⚡ Run Health Check Now</button>
+            <button class="btn btn-primary btn-sm" onclick="var v=verifyPendingRemediations();alert('Running health check on '+detailAsset.hostname+'... (simulated)'+(v>0?'\\n\\n✅ '+v+' pending remediation(s) verified via cross-tool bridge.':'\\n\\nNo pending remediations to verify.'))">⚡ Run Health Check Now</button>
             <button class="btn btn-sm" onclick="alert('Exporting report for '+detailAsset.hostname+'... (simulated)' )">📄 Export Report</button>
             <button class="btn btn-sm" onclick="exportAllCommands(detailAsset.hostname)" style="border-color:var(--low)">📋 Export Fixes for PDQ/SCCM</button>
-            <a href="https://mrdchiang.github.io/amp-shield/#/findings?asset={{hostname}}" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
-            <a href="https://mrdchiang.github.io/remflow/#/deploy-fix?asset={{hostname}}" target="_blank" class="btn btn-sm" id="remflow-link" style="margin-top:0">🛠️ Remediate via RemFlow</a>
+            <a href="https://mrdchiang.github.io/amp-shield/#/findings" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
+            <a href="https://mrdchiang.github.io/remflow/#/remediations" target="_blank" class="btn btn-sm" id="remflow-link" style="margin-top:0">🛠️ Remediate via RemFlow</a>
           </div>
           <div class="compare-match" style="font-size:13px;color:var(--text-muted);margin-top:4px">
             Last verified: <span id="detail-verified">—</span>
@@ -1304,9 +1304,9 @@ function showDetail(hostname){
     </tr>`;
   }).join('');
 
-  // Update ShieldView & RemFlow links with real hostname
-  document.getElementById('shield-link').href = 'https://mrdchiang.github.io/amp-shield/#/findings?asset=' + encodeURIComponent(a.hostname);
-  document.getElementById('remflow-link').href = 'https://mrdchiang.github.io/remflow/#/deploy-fix?asset=' + encodeURIComponent(a.hostname);
+  // Update ShieldView & RemFlow links (hash routes — no query params supported)
+  document.getElementById('shield-link').href = 'https://mrdchiang.github.io/amp-shield/#/findings';
+  document.getElementById('remflow-link').href = 'https://mrdchiang.github.io/remflow/#/remediations';
 
   // Estimate CVE count based on hostname prefix (prefix = first segment before dash or underscore)
   const prefix = (a.hostname || '').split(/[-_]/)[0].toUpperCase();
@@ -1613,6 +1613,26 @@ function checkCrossToolQueue() {
 function checkValidatedRemediations() {
   try { return JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]'); }
   catch(e) { return []; }
+}
+// Mark pending remediations as verified in the cross-tool bridge
+function verifyPendingRemediations() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
+    if (pending.length === 0) return 0;
+    const now = new Date().toISOString();
+    pending.forEach(item => {
+      item.status = 'verified';
+      item.verifiedAt = now;
+      item.verifiedBy = 'TheValidator';
+      validated.push({...item, verifiedAt: now, verifiedBy: 'TheValidator'});
+    });
+    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    localStorage.setItem('security-tools:validated-remediations', JSON.stringify(validated));
+    localStorage.setItem('security-tools:last-remediation', JSON.stringify({action: 'verified', count: pending.length, at: now}));
+    return pending.length;
+  } catch(e) { return 0; }
 }
 // ===== INIT FILTERS =====
 function initFilters(){
