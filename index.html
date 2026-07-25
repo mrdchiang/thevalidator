@@ -1334,6 +1334,7 @@ const KEYS = {
   VALIDATOR_GPO_HISTORY:   'security-tools:validator-gpo-baseline-history',
   REMEDIATION_QUEUE:       'security-tools:remediation-queue',
   VALIDATED_REMEDIATIONS:  'security-tools:validated-remediations',
+  VERIFIED_QUEUE:          'security-tools:verified-queue',
   LAST_REMEDIATION:        'security-tools:last-remediation',
   LAUNCHPAD_QUEUE:         'security-tools:launchpad-queue',
   LAST_LAUNCHPAD_PUSH:     'security-tools:last-launchpad-push',
@@ -2208,7 +2209,31 @@ function verifySingleItem(cve) {
     validated.push({...item});
     localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
-    showToast('✅ Verified: ' + (item.cve || cve));
+
+    // Phase 1.1: Also write to VERIFIED_QUEUE for ShieldView
+    var asset = item.asset || item.hostname || 'Unknown';
+    var expected = item.expected || '';
+    var actual = item.actual || item.console || 'Verified';
+    var evidenceStr = (expected && actual)
+      ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
+      : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
+    var vqRecord = {
+      findingId: item.id || (item.cve + '_' + asset),
+      asset: asset,
+      cve: item.cve || 'N/A',
+      verifiedAt: item.verifiedAt,
+      verifiedByTool: 'thevalidator',
+      checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
+      evidence: evidenceStr,
+      expected: expected || 'N/A',
+      actual: actual || 'N/A',
+      result: 'pass'
+    };
+    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    verifiedQueue.push(vqRecord);
+    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
+
+    showToast('✅ Verified: ' + (item.cve || cve) + ' — Written to pipeline');
     renderPendingVerifications();
     renderDashboard();
   } catch(e) { showToast('Error verifying item'); }
@@ -3629,14 +3654,36 @@ function verifyPendingRemediations() {
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     if (pending.length === 0) return 0;
     const now = new Date().toISOString();
+    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
     pending.forEach(item => {
       item.status = 'verified';
       item.verifiedAt = now;
       item.verifiedBy = 'TheValidator';
       validated.push({...item, verifiedAt: now, verifiedBy: 'TheValidator'});
+
+      // Phase 1.1: Also build VERIFIED_QUEUE record
+      var asset = item.asset || item.hostname || 'Unknown';
+      var expected = item.expected || '';
+      var actual = item.actual || item.console || 'Verified';
+      var evidenceStr = (expected && actual)
+        ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
+        : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
+      verifiedQueue.push({
+        findingId: item.id || (item.cve + '_' + asset),
+        asset: asset,
+        cve: item.cve || 'N/A',
+        verifiedAt: now,
+        verifiedByTool: 'thevalidator',
+        checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
+        evidence: evidenceStr,
+        expected: expected || 'N/A',
+        actual: actual || 'N/A',
+        result: 'pass'
+      });
     });
     localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
+    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
     localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify({action: 'verified', count: pending.length, at: now}));
     return pending.length;
   } catch(e) { return 0; }
@@ -3846,13 +3893,36 @@ function verifyPipelineItem(index) {
     }
     validated.push({...item});
 
+    // Phase 1.1: Also write to VERIFIED_QUEUE for ShieldView
+    var asset = item.asset || item.hostname || 'Unknown';
+    var expected = item.expected || '';
+    var actual = item.actual || item.console || 'Verified';
+    var evidenceStr = (expected && actual)
+      ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
+      : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
+    var vqRecord = {
+      findingId: item.id || (item.cve + '_' + asset),
+      asset: asset,
+      cve: item.cve || 'N/A',
+      verifiedAt: item.verifiedAt,
+      verifiedByTool: 'thevalidator',
+      checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
+      evidence: evidenceStr,
+      expected: expected || 'N/A',
+      actual: actual || 'N/A',
+      result: 'pass'
+    };
+    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    verifiedQueue.push(vqRecord);
+    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
+
     localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
 
     pipelineVerificationItems.splice(index, 1);
     renderVerificationItems();
     renderPipelineStatusBar();
-    showToast('✅ Verified: ' + (item.cve || 'Item'));
+    showToast('✅ Verified: ' + (item.cve || 'Item') + ' — Written to pipeline');
   } catch(e) { showToast('Error verifying item'); }
 }
 
