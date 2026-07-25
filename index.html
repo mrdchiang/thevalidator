@@ -614,6 +614,78 @@ tbody tr:last-child td{border-bottom:none}
   .detail-grid,.compare-grid{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ===== PIPELINE STATUS BAR ===== */
+.pipeline-bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:8px 0}
+.pipeline-bar .pipe-segment{display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);font-size:13px;flex:1;min-width:200px}
+.pipeline-bar .pipe-segment .pipe-icon{font-size:20px}
+.pipeline-bar .pipe-segment .pipe-info{}
+.pipeline-bar .pipe-segment .pipe-title{font-weight:600;color:var(--text-primary);margin-bottom:2px}
+.pipeline-bar .pipe-segment .pipe-detail{font-size:11px;color:var(--text-muted)}
+.pipeline-bar .pipe-arrow{font-size:18px;color:var(--accent);font-weight:700}
+
+/* ===== PIPELINE PREVIEW ===== */
+.pipeline-preview{background:var(--bg-elevated);border:1px solid var(--accent);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.pipeline-preview .preview-title{font-weight:600;color:var(--accent);margin-bottom:6px;font-size:14px}
+.pipeline-preview .preview-stats{display:flex;gap:16px;font-size:12px;flex-wrap:wrap}
+.pipeline-preview .preview-stat{padding:4px 10px;border-radius:12px;font-weight:600}
+.pipeline-preview .preview-stat.deployed{background:var(--low-bg);color:var(--low)}
+.pipeline-preview .preview-stat.pending{background:var(--medium-bg);color:var(--medium)}
+
+/* ===== LIFECYCLE TIMELINE ===== */
+.timeline-container{overflow-x:auto;padding:20px 0}
+.timeline-bar{position:relative;height:200px;min-width:900px;display:flex;align-items:flex-end}
+.timeline-q{flex:1;position:relative;border-left:1px dashed var(--border-light);padding:0 4px;min-width:80px}
+.timeline-q:first-child{border-left:none}
+.timeline-q-label{bottom:-24px;left:4px;font-size:10px;color:var(--text-muted);text-align:center;white-space:nowrap;position:absolute;transform:translateX(-50%)}
+.timeline-dots{position:absolute;bottom:28px;left:0;right:0;display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:0 4px}
+.timeline-dot{width:8px;height:8px;border-radius:50%;cursor:pointer;transition:transform .15s;position:relative}
+.timeline-dot:hover{transform:scale(1.6);z-index:10}
+.timeline-dot.supported{background:var(--low)}
+.timeline-dot.approaching{background:var(--medium)}
+.timeline-dot.eol{background:var(--critical)}
+.timeline-dot.unknown{background:var(--text-muted)}
+.timeline-legend{display:flex;gap:16px;justify-content:center;margin-top:30px;font-size:12px;flex-wrap:wrap}
+.timeline-legend-item{display:flex;align-items:center;gap:6px}
+
+/* ===== REPLACEMENT GROUPS ===== */
+.replacement-group{margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.replacement-group .rg-header{cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg-surface);transition:background .15s}
+.replacement-group .rg-header:hover{background:var(--bg-hover)}
+.replacement-group .rg-header .rg-quarter{font-weight:600;color:var(--text-primary);font-size:14px}
+.replacement-group .rg-header .rg-stats{display:flex;gap:12px;font-size:12px;align-items:center}
+.replacement-group .rg-header .rg-stat{color:var(--text-secondary)}
+.replacement-group .rg-header .rg-cost{font-weight:600;color:var(--accent)}
+.replacement-group .rg-body{display:none;padding:0 18px 14px;background:var(--bg-root)}
+.replacement-group.open .rg-body{display:block}
+.replacement-group .rg-asset{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.replacement-group .rg-asset:last-child{border-bottom:none}
+.replacement-group .rg-asset .rg-name{color:var(--text-primary);font-weight:500;min-width:120px}
+.replacement-group .rg-asset .rg-os{color:var(--text-secondary);min-width:140px}
+.replacement-group .rg-asset .rg-type{color:var(--text-muted);font-size:11px}
+.replacement-group .rg-toggle{font-size:12px;color:var(--text-muted);transition:transform .2s}
+.replacement-group.open .rg-toggle{transform:rotate(180deg)}
+
+/* ===== UPGRADE PATHS ===== */
+.upgrade-path-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+.upgrade-path-card .up-title{font-weight:600;font-size:15px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.upgrade-path-card .up-from{color:var(--critical);font-size:13px}
+.upgrade-path-card .up-arrow{margin:0 8px;color:var(--text-muted)}
+.upgrade-path-card .up-to{color:var(--low);font-size:13px}
+.upgrade-path-card .up-steps{margin-top:10px;counter-reset:step}
+.upgrade-path-card .up-step{counter-increment:step;padding:6px 0;font-size:13px;color:var(--text-secondary);display:flex;gap:8px;align-items:flex-start}
+.upgrade-path-card .up-step::before{content:counter(step);background:var(--accent-glow);color:var(--accent);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.upgrade-path-card .up-step code{background:var(--bg-root);padding:3px 8px;border-radius:3px;font-size:11px;display:inline-block;margin-top:2px;color:var(--accent)}
+.upgrade-path-card .up-cost{display:inline-block;margin-top:8px;padding:4px 12px;background:var(--accent-glow);border-radius:12px;font-size:12px;color:var(--accent)}
+
+/* ===== EOL BADGES ===== */
+.badge-eol{background:var(--critical-bg);color:var(--critical)}
+.badge-approaching{background:var(--medium-bg);color:var(--medium)}
+.badge-supported{background:var(--low-bg);color:var(--low)}
+.badge-unknown{background:var(--bg-hover);color:var(--text-muted)}
+
+/* ===== LAUNCHPAD ===== */
+.launchpad-status{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;font-size:13px}
 </style>
 </head>
 <body>
@@ -622,7 +694,7 @@ tbody tr:last-child td{border-bottom:none}
 <aside class="sidebar">
   <div class="sidebar-logo">
     <span class="bolt">⚡</span>
-    <span>TheValidator <span class="sub">v2</span></span>
+    <span>TheValidator <span class="sub">v4</span></span>
   </div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-page="dashboard">
@@ -658,9 +730,19 @@ tbody tr:last-child td{border-bottom:none}
       <span class="icon">🔍</span><span>Console vs Endpoint</span>
       <span class="badge" id="mismatch-badge" style="display:none">0</span>
     </button>
+    <div class="nav-separator"></div>
+    <div class="nav-section-label">Pipeline &amp; Lifecycle</div>
+    <button class="nav-item" data-page="pipeline">
+      <span class="icon">🔄</span><span>Pipeline</span>
+      <span class="badge" id="pipeline-badge" style="display:none">0</span>
+    </button>
+    <button class="nav-item" data-page="lifecycle">
+      <span class="icon">🕐</span><span>Lifecycle</span>
+      <span class="badge" id="lifecycle-badge" style="display:none">0</span>
+    </button>
   </nav>
   <div class="sidebar-footer">
-    TheValidator v2.0.0 &bull; Nous Research
+    TheValidator v4.0.0 &bull; Nous Research
   </div>
 </aside>
 
@@ -681,6 +763,17 @@ tbody tr:last-child td{border-bottom:none}
     <!-- ============================== -->
     <div class="page active" id="page-dashboard">
       <div class="stats-grid" id="dashboard-stats"></div>
+
+      <!-- Pipeline Status Bar -->
+      <div class="card" id="pipeline-status-card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h3>🔄 Pipeline Status</h3>
+          <button class="btn btn-sm" onclick="showPage('pipeline')">Manage →</button>
+        </div>
+        <div class="card-body" id="pipeline-status-bar">
+          <div style="color:var(--text-muted);padding:8px 0">Loading pipeline status...</div>
+        </div>
+      </div>
 
       <!-- Pending Verifications + GPO Drift row -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
@@ -1060,6 +1153,127 @@ tbody tr:last-child td{border-bottom:none}
           <div style="font-size:48px;margin-bottom:12px">🔍</div>
           <div style="font-size:15px;font-weight:600;margin-bottom:6px">No console data loaded</div>
           <div style="font-size:13px">Import a console export CSV or load demo data to compare console-reported state against endpoint reality.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- PIPELINE PAGE                  -->
+    <!-- ============================== -->
+    <div class="page" id="page-pipeline">
+      <div class="card">
+        <div class="card-header">
+          <h3>📥 Import from RemFlow</h3>
+          <span style="font-size:12px;color:var(--text-muted)">Reads from security-tools:remediation-queue</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+            <button class="btn btn-primary" onclick="importFromRemFlow()">📥 Import from RemFlow</button>
+            <button class="btn" onclick="refreshPipelineStatus()">🔄 Refresh Status</button>
+            <button class="btn btn-ghost" onclick="clearRemFlowQueue()">🗑️ Clear Queue</button>
+          </div>
+          <div id="pipeline-import-preview" style="margin-bottom:16px"></div>
+          <div id="pipeline-verification-items" style="max-height:400px;overflow-y:auto">
+            <div style="color:var(--text-muted);padding:12px 0">Click "Import from RemFlow" to load pending remediations.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>📤 Push to Launchpad</h3>
+          <span style="font-size:12px;color:var(--text-muted)">Verified items ready to push to security-tools:launchpad-queue</span>
+        </div>
+        <div class="card-body">
+          <div id="pipeline-launchpad-status"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-primary" onclick="pushVerifiedToLaunchpad()">📤 Push Verified to Launchpad</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>📋 Verified History</h3></div>
+        <div class="card-body">
+          <div id="pipeline-history" style="max-height:400px;overflow-y:auto">
+            <div style="color:var(--text-muted);padding:12px 0">No verified remediations yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- LIFECYCLE PAGE                 -->
+    <!-- ============================== -->
+    <div class="page" id="page-lifecycle">
+      <div class="tabs" id="lifecycle-tabs">
+        <button class="tab-btn active" data-tab="eol-overview">📊 EOL Overview</button>
+        <button class="tab-btn" data-tab="replacement-groups">📦 Replacement Groups</button>
+        <button class="tab-btn" data-tab="upgrade-paths">🔄 Upgrade Paths</button>
+        <button class="tab-btn" data-tab="timeline">📅 Timeline</button>
+      </div>
+
+      <!-- EOL Overview Tab -->
+      <div class="tab-content active" id="tab-eol-overview">
+        <div class="stats-grid" id="lifecycle-stats"></div>
+        <div class="card">
+          <div class="card-header">
+            <h3>🖥️ Endpoint EOL Status</h3>
+            <span id="eol-filter-status" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div class="card-body">
+            <div class="toolbar">
+              <input class="search-box" id="lifecycle-search" placeholder="Search hostname, OS..." oninput="renderLifecycleEOL()" />
+              <select class="filter-select" id="lifecycle-eol-filter" onchange="renderLifecycleEOL()">
+                <option value="all">All Status</option>
+                <option value="supported">✅ Supported</option>
+                <option value="approaching">⏳ Approaching EOL</option>
+                <option value="eol">🪦 End of Life</option>
+                <option value="unknown">❓ Unknown</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr>
+                <th>Hostname</th><th>OS</th><th>Type</th><th>EOL Date</th><th>Days Left</th><th>Status</th><th>Upgrade Path</th>
+              </tr></thead><tbody id="lifecycle-eol-table"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Replacement Groups Tab -->
+      <div class="tab-content" id="tab-replacement-groups">
+        <div class="card">
+          <div class="card-header">
+            <h3>📦 Replacement Groups by Quarter</h3>
+            <button class="btn btn-sm btn-primary" onclick="pushReplacementToRemFlow()">📤 Create Replacement Project</button>
+          </div>
+          <div class="card-body">
+            <div id="replacement-groups-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrade Paths Tab -->
+      <div class="tab-content" id="tab-upgrade-paths">
+        <div class="card">
+          <div class="card-header"><h3>🔄 Suggested Upgrade Paths</h3></div>
+          <div class="card-body">
+            <div id="upgrade-paths-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline Tab -->
+      <div class="tab-content" id="tab-timeline">
+        <div class="card">
+          <div class="card-header">
+            <h3>📅 EOL Timeline (Next 18 Months)</h3>
+            <span style="font-size:12px;color:var(--text-muted)">Color-coded by EOL status</span>
+          </div>
+          <div class="card-body">
+            <div id="lifecycle-timeline"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1865,30 +2079,7 @@ function renderDashboard(){
   const passingAll=assets.filter(a=>a.checks.filter(c=>c.result!=='pass').length===0).length;
   const compliance=Math.round((passingAll/total)*100);
 
-  // Cross-tool banner
-  const pendingItems = checkCrossToolQueue();
-  const validatedItems = checkValidatedRemediations();
-  let bannerHtml = '';
-  if (validatedItems.length > 0) {
-    bannerHtml = '<div style="background:#123020;border:1px solid var(--low);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:20px">✅</span>' +
-      '<div style="flex:1">' +
-        '<div style="font-weight:600">' + validatedItems.length + ' remediated finding' + (validatedItems.length>1?'s':'') + ' verified</div>' +
-        '<div style="font-size:12px;color:var(--text-secondary)">Last validated: ' + validatedItems[validatedItems.length-1].cve + '</div>' +
-      '</div>' +
-      '<span class="badge badge-success">Verified</span>' +
-    '</div>';
-  } else if (pendingItems.length > 0) {
-    bannerHtml = '<div style="background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:20px">🔄</span>' +
-      '<div style="flex:1">' +
-        '<div style="font-weight:600">' + pendingItems.length + ' remediation' + (pendingItems.length>1?'s':'') + ' deployed — awaiting verification</div>' +
-      '</div>' +
-      '<span class="badge badge-warning">Pending</span>' +
-    '</div>';
-  }
-
-  document.getElementById('dashboard-stats').innerHTML= bannerHtml +
+  document.getElementById('dashboard-stats').innerHTML=
     '<div class="stat-card info"><div class="stat-label">Total Endpoints</div><div class="stat-value">'+total+'</div><div class="stat-sub">Across all locations</div></div>' +
     '<div class="stat-card healthy"><div class="stat-label">Healthy</div><div class="stat-value">'+healthy+'</div><div class="stat-sub">All checks passing</div></div>' +
     '<div class="stat-card warning"><div class="stat-label">Degraded</div><div class="stat-value">'+degraded+'</div><div class="stat-sub">Warnings or minor failures</div></div>' +
@@ -1896,8 +2087,8 @@ function renderDashboard(){
     '<div class="stat-card" style="border-color:'+(offline>0?'var(--critical)':'var(--border)')+'"><div class="stat-label">Offline</div><div class="stat-value" style="color:'+(offline>0?'var(--critical)':'var(--text-primary)')+'">'+offline+'</div><div class="stat-sub">No recent check-in</div></div>' +
     '<div class="stat-card healthy"><div class="stat-label">Compliance Rate</div><div class="stat-value">'+compliance+'%</div><div class="stat-sub">Passing all checks</div></div>';
 
-  // Pending Verifications from RemFlow
-  renderPendingVerifications();
+  // Pipeline Status Bar
+  renderPipelineStatusBar();
 
   // GPO Drift on dashboard
   renderGPODriftDashboard();
@@ -2683,7 +2874,7 @@ function showPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   if(pg){pg.classList.add('active');const navEl=document.querySelector('.nav-item[data-page="'+name+'"]');if(navEl)navEl.classList.add('active')}
-  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',software:'Software Versions',detail:'Asset Detail','gpo-baseline':'GPO Baseline & Drift',cis:'CIS Benchmark Compliance','console-endpoint':'Console vs Endpoint Comparison'};
+  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',software:'Software Versions',detail:'Asset Detail','gpo-baseline':'GPO Baseline & Drift',cis:'CIS Benchmark Compliance','console-endpoint':'Console vs Endpoint Comparison',pipeline:'Pipeline Handoff',lifecycle:'EOL Lifecycle Management'};
   document.getElementById('page-title').textContent=titles[name]||'Dashboard';
   if(name==='dashboard') renderDashboard();
   if(name==='assets') renderAssets();
@@ -2693,6 +2884,8 @@ function showPage(name){
   if(name==='gpo-baseline') renderGPOBaseline();
   if(name==='cis') renderCISPage();
   if(name==='console-endpoint') renderConsoleComparison();
+  if(name==='pipeline') renderPipelinePage();
+  if(name==='lifecycle') renderLifecyclePage();
 }
 
 // ===== DEEP LINK ROUTING =====
@@ -2704,7 +2897,7 @@ function handleHash(){
     const a=assets.find(x=>x.hostname===decodeURIComponent(param));
     if(a){showDetail(decodeURIComponent(param));return}
   }
-  if(['dashboard','assets','issues','history','software','gpo-baseline','cis','console-endpoint'].includes(page)){
+  if(['dashboard','assets','issues','history','software','gpo-baseline','cis','console-endpoint','pipeline','lifecycle'].includes(page)){
     showPage(page);
   } else {
     showPage('dashboard');
@@ -3435,7 +3628,623 @@ function verifyPendingRemediations() {
     return pending.length;
   } catch(e) { return 0; }
 }
-// ===== INIT FILTERS =====
+// ===== EOL DATABASE =====
+const EOL_DB = [
+  {os:'Windows 10 Enterprise', eolDate:'2025-10-14', family:'Windows', type:'Workstation', upgrade:'Win11 23H2 via SCCM task sequence', cost:1200},
+  {os:'Windows 10 22H2', eolDate:'2025-10-14', family:'Windows', type:'Workstation', upgrade:'Win11 23H2 via SCCM task sequence', cost:1200},
+  {os:'Windows 11 Enterprise', eolDate:'2027-11-09', family:'Windows', type:'Workstation', upgrade:'Current', cost:1200},
+  {os:'Windows 11 23H2', eolDate:'2027-11-09', family:'Windows', type:'Workstation', upgrade:'Current', cost:1200},
+  {os:'Windows Server 2012 R2', eolDate:'2023-10-10', family:'Windows Server', type:'Server', upgrade:'Server 2022 (in-place or migrate)', cost:8000},
+  {os:'Windows Server 2016', eolDate:'2027-01-11', family:'Windows Server', type:'Server', upgrade:'Server 2022 or 2025', cost:8000},
+  {os:'Windows Server 2019', eolDate:'2029-01-09', family:'Windows Server', type:'Server', upgrade:'Current', cost:8000},
+  {os:'Windows Server 2022', eolDate:'2031-10-14', family:'Windows Server', type:'Server', upgrade:'Current', cost:8000},
+  {os:'macOS 15 Sequoia', eolDate:'2028-09-01', family:'macOS', type:'Laptop', upgrade:'Current', cost:1500},
+  {os:'macOS 14 Sonoma', eolDate:'2027-09-01', family:'macOS', type:'Laptop', upgrade:'macOS 15 Sequoia', cost:1500},
+  {os:'Ubuntu 24.04 LTS', eolDate:'2029-04-01', family:'Linux', type:'Workstation', upgrade:'Current', cost:1200},
+  {os:'Ubuntu 22.04 LTS', eolDate:'2027-04-01', family:'Linux', type:'Workstation', upgrade:'24.04 via do-release-upgrade', cost:1200},
+  {os:'Ubuntu 20.04 LTS', eolDate:'2025-04-01', family:'Linux', type:'Workstation', upgrade:'22.04 via do-release-upgrade', cost:1200},
+  {os:'RHEL 9.4', eolDate:'2032-05-31', family:'Linux', type:'Server', upgrade:'Current', cost:8000},
+  {os:'RHEL 8.10', eolDate:'2029-05-31', family:'Linux', type:'Server', upgrade:'RHEL 9 via Leapp', cost:8000}
+];
+
+const ASSET_TYPE_COSTS = {Workstation:1200, Laptop:1500, Server:8000, Network:5000};
+
+function getEOLLookup() {
+  const map = {};
+  EOL_DB.forEach(e => { map[e.os] = e; });
+  return map;
+}
+const EOL_LOOKUP = getEOLLookup();
+
+function getEOLStatus(eolDate) {
+  const now = new Date();
+  const eol = new Date(eolDate + 'T00:00:00');
+  const diffDays = Math.ceil((eol - now) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return {status:'eol', label:'🪦 EOL', css:'badge-eol', days:Math.abs(diffDays)};
+  if (diffDays <= 180) return {status:'approaching', label:'⏳ Approaching', css:'badge-approaching', days:diffDays};
+  return {status:'supported', label:'✅ Supported', css:'badge-supported', days:diffDays};
+}
+
+function getEOLInfo(osName) {
+  const info = EOL_LOOKUP[osName];
+  if (!info) return {status:'unknown', label:'❓ Unknown', css:'badge-unknown', days:0, eolDate:'Unknown', type:'Workstation', upgrade:'N/A', cost:1200};
+  const eolStatus = getEOLStatus(info.eolDate);
+  return {...info, ...eolStatus};
+}
+
+function detectAssetHardwareType(hostname) {
+  const h = hostname.toLowerCase();
+  if (h.includes('srv') || h.includes('vm') || h.includes('dc-')) return 'Server';
+  if (h.includes('lt') || h.includes('laptop') || h.includes('mbp')) return 'Laptop';
+  return 'Workstation';
+}
+
+// ===== PIPELINE FUNCTIONS =====
+let pipelineVerificationItems = [];
+
+function renderPipelineStatusBar() {
+  const container = document.getElementById('pipeline-status-bar');
+  if (!container) return;
+  const pendingItems = checkCrossToolQueue();
+  const validatedItems = checkValidatedRemediations();
+  const today = new Date().toISOString().slice(0,10);
+
+  let html = '<div class="pipeline-bar">';
+  html += '<div class="pipe-segment">' +
+    '<span class="pipe-icon">📥</span>' +
+    '<div class="pipe-info">' +
+      '<div class="pipe-title">RemFlow</div>' +
+      '<div class="pipe-detail">' + pendingItems.length + ' pending · ' + today + '</div>' +
+    '</div>' +
+    '<button class="btn btn-xs btn-primary" onclick="showPage(\'pipeline\')">Verify Now</button>' +
+  '</div>';
+  html += '<span class="pipe-arrow">→</span>';
+  html += '<div class="pipe-segment">' +
+    '<span class="pipe-icon">✅</span>' +
+    '<div class="pipe-info">' +
+      '<div class="pipe-title">Verified</div>' +
+      '<div class="pipe-detail">' + validatedItems.length + ' items verified</div>' +
+    '</div>' +
+  '</div>';
+  html += '<span class="pipe-arrow">→</span>';
+  html += '<div class="pipe-segment">' +
+    '<span class="pipe-icon">📤</span>' +
+    '<div class="pipe-info">' +
+      '<div class="pipe-title">Launchpad</div>' +
+      '<div class="pipe-detail">' + validatedItems.length + ' ready to push · ' + today + '</div>' +
+    '</div>' +
+    '<button class="btn btn-xs" onclick="pushVerifiedToLaunchpad()">Push Results</button>' +
+  '</div>';
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Update pipeline badge
+  updatePipelineBadge();
+}
+
+function updatePipelineBadge() {
+  const badge = document.getElementById('pipeline-badge');
+  if (!badge) return;
+  const pending = checkCrossToolQueue();
+  const count = pending.length;
+  if (count > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function updateLifecycleBadge() {
+  const badge = document.getElementById('lifecycle-badge');
+  if (!badge) return;
+  let eolCount = 0;
+  assets.forEach(a => {
+    const info = getEOLInfo(a.os);
+    if (info.status === 'eol' || info.status === 'approaching') eolCount++;
+  });
+  if (eolCount > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = eolCount;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function importFromRemFlow() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
+    const deployed = pending.filter(i => i.status === 'deployed').length;
+    const pendingCount = pending.filter(i => i.status === 'pending').length;
+
+    const preview = document.getElementById('pipeline-import-preview');
+    if (pending.length === 0) {
+      preview.innerHTML = '<div class="pipeline-preview" style="border-color:var(--text-muted)"><div class="preview-title" style="color:var(--text-muted)">No items in RemFlow queue</div><div class="preview-stats">The remediation queue is empty. Deploy fixes via RemFlow to see them here.</div></div>';
+      document.getElementById('pipeline-verification-items').innerHTML = '<div style="color:var(--text-muted);padding:12px 0">No items to import.</div>';
+      return;
+    }
+
+    preview.innerHTML = '<div class="pipeline-preview">' +
+      '<div class="preview-title">📥 ' + pending.length + ' items from RemFlow</div>' +
+      '<div class="preview-stats">' +
+        '<span class="preview-stat deployed">' + deployed + ' deployed</span>' +
+        '<span class="preview-stat pending">' + pendingCount + ' pending</span>' +
+      '</div>' +
+    '</div>';
+
+    // Import items as verification items
+    pipelineVerificationItems = pending.map((item, i) => ({
+      ...item,
+      importIndex: i,
+      imported: true,
+      importedAt: new Date().toISOString()
+    }));
+
+    renderVerificationItems();
+    showToast('📥 Imported ' + pending.length + ' items from RemFlow');
+    updatePipelineBadge();
+  } catch(e) {
+    showToast('Error reading RemFlow queue');
+  }
+}
+
+function renderPipelinePage() {
+  importFromRemFlow();
+  renderLaunchpadStatus();
+  renderPipelineHistory();
+}
+
+function renderVerificationItems() {
+  const container = document.getElementById('pipeline-verification-items');
+  if (!container) return;
+  if (pipelineVerificationItems.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);padding:12px 0">Click "Import from RemFlow" to load pending remediations.</div>';
+    return;
+  }
+  container.innerHTML = pipelineVerificationItems.map(item =>
+    '<div class="pending-item">' +
+      '<span class="pending-cve">' + (item.cve || 'N/A') + '</span>' +
+      '<span class="pending-asset">' + (item.asset || item.hostname || 'Unknown') + '</span>' +
+      '<span class="pending-time">' + (item.deployedAt ? new Date(item.deployedAt).toLocaleString() : 'Just now') + '</span>' +
+      '<span class="badge ' + (item.status === 'deployed' ? 'badge-success' : 'badge-pending') + '">' + (item.status || 'pending') + '</span>' +
+      '<button class="btn btn-xs btn-primary" onclick="verifyPipelineItem(' + item.importIndex + ')">Verify Now</button>' +
+    '</div>'
+  ).join('');
+}
+
+function verifyPipelineItem(index) {
+  try {
+    const item = pipelineVerificationItems[index];
+    if (!item) return;
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+
+    item.status = 'verified';
+    item.verifiedAt = new Date().toISOString();
+    item.verifiedBy = 'TheValidator';
+
+    // Update queue
+    const qItem = queue.find(i => (i.cve === item.cve || i.id === item.id));
+    if (qItem) {
+      qItem.status = 'verified';
+      qItem.verifiedAt = item.verifiedAt;
+      qItem.verifiedBy = 'TheValidator';
+    }
+    validated.push({...item});
+
+    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    localStorage.setItem('security-tools:validated-remediations', JSON.stringify(validated));
+
+    pipelineVerificationItems.splice(index, 1);
+    renderVerificationItems();
+    renderPipelineStatusBar();
+    showToast('✅ Verified: ' + (item.cve || 'Item'));
+  } catch(e) { showToast('Error verifying item'); }
+}
+
+function renderLaunchpadStatus() {
+  const container = document.getElementById('pipeline-launchpad-status');
+  if (!container) return;
+  const validated = checkValidatedRemediations();
+  if (validated.length === 0) {
+    container.innerHTML = '<div class="launchpad-status" style="color:var(--text-muted)">No verified items ready to push.</div>';
+  } else {
+    container.innerHTML = '<div class="launchpad-status">' +
+      '<span style="color:var(--low)">✅ ' + validated.length + ' verified item' + (validated.length > 1 ? 's' : '') + '</span> ready to push to Launchpad. Last verified: ' + (validated[validated.length-1].verifiedAt ? new Date(validated[validated.length-1].verifiedAt).toLocaleString() : 'N/A') +
+    '</div>';
+  }
+}
+
+function pushVerifiedToLaunchpad() {
+  try {
+    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    if (validated.length === 0) { showToast('No verified items to push'); return; }
+
+    const launchpad = JSON.parse(localStorage.getItem('security-tools:launchpad-queue') || '[]');
+    validated.forEach(item => {
+      launchpad.push({
+        ...item,
+        pushedAt: new Date().toISOString(),
+        source: 'TheValidator Pipeline'
+      });
+    });
+
+    localStorage.setItem('security-tools:launchpad-queue', JSON.stringify(launchpad));
+    localStorage.setItem('security-tools:validated-remediations', JSON.stringify([]));
+    localStorage.setItem('security-tools:last-launchpad-push', JSON.stringify({count: validated.length, at: new Date().toISOString()}));
+
+    showToast('📤 Pushed ' + validated.length + ' verified items to Launchpad');
+    renderPipelineStatusBar();
+    renderLaunchpadStatus();
+    renderPipelineHistory();
+  } catch(e) { showToast('Error pushing to Launchpad'); }
+}
+
+function renderPipelineHistory() {
+  const container = document.getElementById('pipeline-history');
+  if (!container) return;
+  const validated = checkValidatedRemediations();
+  if (validated.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);padding:12px 0">No verified remediations yet.</div>';
+    return;
+  }
+  container.innerHTML = validated.map(item =>
+    '<div class="pending-item">' +
+      '<span class="pending-cve">' + (item.cve || 'N/A') + '</span>' +
+      '<span class="pending-asset">' + (item.asset || item.hostname || 'Unknown') + '</span>' +
+      '<span class="pending-time">Verified: ' + (item.verifiedAt ? new Date(item.verifiedAt).toLocaleString() : 'N/A') + '</span>' +
+      '<span class="badge badge-success">Verified</span>' +
+    '</div>'
+  ).join('');
+}
+
+function refreshPipelineStatus() {
+  renderPipelineStatusBar();
+  importFromRemFlow();
+  renderLaunchpadStatus();
+  renderPipelineHistory();
+  showToast('🔄 Pipeline status refreshed');
+}
+
+function clearRemFlowQueue() {
+  if (!confirm('Clear the RemFlow remediation queue? This cannot be undone.')) return;
+  localStorage.removeItem('security-tools:remediation-queue');
+  localStorage.removeItem('security-tools:validated-remediations');
+  pipelineVerificationItems = [];
+  showToast('🗑️ RemFlow queue cleared');
+  renderPipelinePage();
+}
+
+// ===== LIFECYCLE FUNCTIONS =====
+function renderLifecyclePage() {
+  initLifecycleTabs();
+  renderLifecycleStats();
+  renderLifecycleEOL();
+  renderReplacementGroups();
+  renderUpgradePaths();
+  renderTimeline();
+  updateLifecycleBadge();
+}
+
+function initLifecycleTabs() {
+  document.querySelectorAll('#lifecycle-tabs .tab-btn').forEach(btn => {
+    btn.onclick = function() {
+      document.querySelectorAll('#lifecycle-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('#page-lifecycle .tab-content').forEach(tc => tc.classList.remove('active'));
+      const tabId = 'tab-' + this.dataset.tab;
+      const tab = document.getElementById(tabId);
+      if (tab) tab.classList.add('active');
+    };
+  });
+}
+
+function renderLifecycleStats() {
+  const container = document.getElementById('lifecycle-stats');
+  if (!container) return;
+  let supported = 0, approaching = 0, eol = 0, unknown = 0;
+  assets.forEach(a => {
+    const info = getEOLInfo(a.os);
+    if (info.status === 'supported') supported++;
+    else if (info.status === 'approaching') approaching++;
+    else if (info.status === 'eol') eol++;
+    else unknown++;
+  });
+  container.innerHTML =
+    '<div class="stat-card healthy"><div class="stat-label">✅ Supported</div><div class="stat-value">' + supported + '</div><div class="stat-sub">OS within support window</div></div>' +
+    '<div class="stat-card warning"><div class="stat-label">⏳ Approaching EOL</div><div class="stat-value">' + approaching + '</div><div class="stat-sub">EOL within 180 days</div></div>' +
+    '<div class="stat-card critical"><div class="stat-label">🪦 End of Life</div><div class="stat-value">' + eol + '</div><div class="stat-sub">OS past end-of-life date</div></div>' +
+    '<div class="stat-card info"><div class="stat-label">❓ Unknown</div><div class="stat-value">' + unknown + '</div><div class="stat-sub">No EOL data available</div></div>';
+}
+
+function renderLifecycleEOL() {
+  const tbody = document.getElementById('lifecycle-eol-table');
+  const filter = document.getElementById('lifecycle-eol-filter').value;
+  const query = (document.getElementById('lifecycle-search')?.value || '').toLowerCase();
+  if (!tbody) return;
+
+  let rows = assets.map(a => {
+    const info = getEOLInfo(a.os);
+    const hwType = detectAssetHardwareType(a.hostname);
+    return {asset: a, info, hwType};
+  });
+
+  if (filter !== 'all') rows = rows.filter(r => r.info.status === filter);
+  if (query) rows = rows.filter(r => r.asset.hostname.toLowerCase().includes(query) || r.asset.os.toLowerCase().includes(query));
+
+  const filterStatusEl = document.getElementById('eol-filter-status');
+  if (filterStatusEl) filterStatusEl.textContent = '(' + rows.length + ' shown)';
+
+  tbody.innerHTML = rows.map(r => {
+    const daysText = r.info.status === 'eol' ? r.info.days + 'd ago' : r.info.status === 'unknown' ? '—' : r.info.days + 'd left';
+    const daysColor = r.info.status === 'eol' ? 'var(--critical)' : r.info.status === 'approaching' ? 'var(--medium)' : 'var(--text-secondary)';
+    return '<tr>' +
+      '<td style="font-weight:500;color:var(--text-primary)">' + r.asset.hostname + '</td>' +
+      '<td>' + r.asset.os + '</td>' +
+      '<td>' + r.hwType + '</td>' +
+      '<td>' + r.info.eolDate + '</td>' +
+      '<td style="color:' + daysColor + '">' + daysText + '</td>' +
+      '<td><span class="badge ' + r.info.css + '">' + r.info.label + '</span></td>' +
+      '<td style="font-size:12px;color:var(--text-secondary)">' + r.info.upgrade + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderReplacementGroups() {
+  const container = document.getElementById('replacement-groups-container');
+  if (!container) return;
+
+  // Group EOL/approaching assets by quarter
+  const groups = {};
+  assets.forEach(a => {
+    const info = getEOLInfo(a.os);
+    if (info.status !== 'approaching' && info.status !== 'eol') return;
+    const eolDate = new Date(info.eolDate + 'T00:00:00');
+    const quarter = getQuarter(eolDate);
+    const key = quarter.key;
+    if (!groups[key]) groups[key] = {quarter: quarter.label, key, assets: [], totalCost: 0, priority: 'Medium'};
+    const hwType = detectAssetHardwareType(a.hostname);
+    const cost = info.cost || ASSET_TYPE_COSTS[hwType] || 1200;
+    groups[key].assets.push({asset: a, info, hwType, cost});
+    groups[key].totalCost += cost;
+  });
+
+  // Determine priority
+  Object.values(groups).forEach(g => {
+    if (g.assets.some(a => a.info.status === 'eol')) g.priority = '🔴 High';
+    else if (g.totalCost > 20000) g.priority = '🟡 Medium';
+    else g.priority = '🟢 Low';
+  });
+
+  const sortedGroups = Object.values(groups).sort((a, b) => a.key.localeCompare(b.key));
+
+  if (sortedGroups.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center">No EOL or approaching assets found. All endpoints are within their support window.</div>';
+    return;
+  }
+
+  container.innerHTML = sortedGroups.map((g, gi) => {
+    const groupId = 'rg-' + gi;
+    return '<div class="replacement-group" id="' + groupId + '">' +
+      '<div class="rg-header" onclick="toggleReplacementGroup(\'' + groupId + '\')">' +
+        '<span class="rg-quarter">📦 ' + g.quarter + '</span>' +
+        '<div class="rg-stats">' +
+          '<span class="rg-stat">' + g.assets.length + ' assets</span>' +
+          '<span class="rg-stat">' + g.priority + '</span>' +
+          '<span class="rg-cost">$' + g.totalCost.toLocaleString() + '</span>' +
+          '<span class="rg-toggle">▼</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="rg-body">' +
+        g.assets.map(a => '<div class="rg-asset">' +
+          '<span class="rg-name">' + a.asset.hostname + '</span>' +
+          '<span class="rg-os">' + a.asset.os + '</span>' +
+          '<span class="rg-type">' + a.hwType + '</span>' +
+          '<span class="badge ' + a.info.css + '">' + a.info.label + '</span>' +
+          '<span style="margin-left:auto;color:var(--accent)">$' + a.cost.toLocaleString() + '</span>' +
+        '</div>').join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleReplacementGroup(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+function getQuarter(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  let q;
+  if (m <= 2) q = 'Q1';
+  else if (m <= 5) q = 'Q2';
+  else if (m <= 8) q = 'Q3';
+  else q = 'Q4';
+  return {key: y + '-' + q, label: q + ' ' + y};
+}
+
+function renderUpgradePaths() {
+  const container = document.getElementById('upgrade-paths-container');
+  if (!container) return;
+
+  const paths = [
+    {
+      from: 'Windows 10 Enterprise / 22H2',
+      to: 'Windows 11 23H2',
+      method: 'SCCM Task Sequence',
+      steps: [
+        'Run compatibility scan: <code>SetupDiag.exe /Scan</code>',
+        'Verify hardware meets Win11 requirements (TPM 2.0, Secure Boot)',
+        'Create SCCM task sequence: <code>Software Library → Task Sequences → Create Task Sequence</code>',
+        'Deploy to pilot group (5% of endpoints)',
+        'Monitor deployment status in SCCM console',
+        'Roll out to production in phases: 25% → 50% → 100%',
+        'Post-upgrade: verify GPO application and security tool health'
+      ],
+      effort: '2-4 weeks per phase'
+    },
+    {
+      from: 'Windows Server 2012 R2 / 2016',
+      to: 'Windows Server 2022',
+      method: 'In-Place Upgrade or Migrate',
+      steps: [
+        'Full backup of server (Veeam / Azure Backup)',
+        'Run upgrade compatibility checker: <code>SetupDiag.exe</code>',
+        'Option A (In-Place): Mount Server 2022 ISO and run <code>setup.exe /auto upgrade</code>',
+        'Option B (Migrate): Provision new Server 2022 VM, install roles, migrate data',
+        'Verify all services start: <code>Get-Service | Where Status -ne "Running"</code>',
+        'Run post-upgrade validation: firewall rules, GPO, security baseline',
+        'Update CMDB and monitoring tools'
+      ],
+      effort: '1-2 weeks per server'
+    },
+    {
+      from: 'Ubuntu 20.04 LTS',
+      to: 'Ubuntu 22.04 LTS',
+      method: 'do-release-upgrade',
+      steps: [
+        'Backup critical data: <code>tar -czf /backup/$(hostname)-backup.tar.gz /etc /var /home</code>',
+        'Update current packages: <code>sudo apt update && sudo apt upgrade -y</code>',
+        'Install update-manager-core: <code>sudo apt install update-manager-core</code>',
+        'Run release upgrade: <code>sudo do-release-upgrade -d</code>',
+        'Follow interactive prompts (keep local configs when asked)',
+        'Post-upgrade: verify services: <code>systemctl --failed</code>',
+        'Reboot and verify: <code>lsb_release -a</code>'
+      ],
+      effort: '1-2 hours per endpoint'
+    },
+    {
+      from: 'RHEL 8.x',
+      to: 'RHEL 9.x',
+      method: 'Leapp In-Place Upgrade',
+      steps: [
+        'Register with Red Hat: <code>subscription-manager register</code>',
+        'Install leapp: <code>sudo dnf install leapp-upgrade -y</code>',
+        'Run pre-upgrade check: <code>sudo leapp preupgrade</code>',
+        'Review pre-upgrade report: <code>/var/log/leapp/leapp-report.txt</code>',
+        'Execute upgrade: <code>sudo leapp upgrade</code>',
+        'Reboot into RHEL 9: <code>sudo reboot</code>',
+        'Verify: <code>cat /etc/redhat-release</code>'
+      ],
+      effort: '30 min - 1 hour per endpoint'
+    }
+  ];
+
+  container.innerHTML = paths.map(p =>
+    '<div class="upgrade-path-card">' +
+      '<div class="up-title">' +
+        '<span class="up-from">' + p.from + '</span>' +
+        '<span class="up-arrow">→</span>' +
+        '<span class="up-to">' + p.to + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Method: ' + p.method + ' · Estimated: ' + p.effort + '</div>' +
+      '<div class="up-steps">' + p.steps.map(s => '<div class="up-step">' + s + '</div>').join('') + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderTimeline() {
+  const container = document.getElementById('lifecycle-timeline');
+  if (!container) return;
+
+  const now = new Date();
+  const endDate = new Date(now);
+  endDate.setMonth(endDate.getMonth() + 18);
+
+  // Generate quarters for next 18 months
+  const quarters = [];
+  let qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+  while (qStart <= endDate) {
+    const qEnd = new Date(qStart);
+    qEnd.setMonth(qEnd.getMonth() + 3);
+    const m = qStart.getMonth();
+    let qLabel;
+    if (m <= 2) qLabel = 'Q1 ' + qStart.getFullYear();
+    else if (m <= 5) qLabel = 'Q2 ' + qStart.getFullYear();
+    else if (m <= 8) qLabel = 'Q3 ' + qStart.getFullYear();
+    else qLabel = 'Q4 ' + qStart.getFullYear();
+    quarters.push({label: qLabel, start: new Date(qStart), end: new Date(qEnd)});
+    qStart.setMonth(qStart.getMonth() + 3);
+  }
+
+  // Assign each asset EOL to a quarter
+  const quarterBuckets = {};
+  quarters.forEach(q => { quarterBuckets[q.label] = []; });
+
+  assets.forEach(a => {
+    const info = getEOLInfo(a.os);
+    if (info.eolDate === 'Unknown') return;
+    const eolDate = new Date(info.eolDate + 'T00:00:00');
+    // Skip if already past end date range
+    if (eolDate > endDate) return;
+    // Find which quarter
+    for (const q of quarters) {
+      if (eolDate >= q.start && eolDate < q.end) {
+        quarterBuckets[q.label].push({hostname: a.hostname, os: a.os, status: info.status, eolDate: info.eolDate});
+        break;
+      }
+    }
+  });
+
+  let html = '<div class="timeline-container"><div class="timeline-bar">';
+  quarters.forEach(q => {
+    const dots = quarterBuckets[q.label] || [];
+    html += '<div class="timeline-q">' +
+      '<div class="timeline-dots">' +
+        dots.map(d => '<span class="timeline-dot ' + d.status + '" title="' + d.hostname + ' — ' + d.os + ' (EOL: ' + d.eolDate + ')"></span>').join('') +
+      '</div>' +
+      '<div class="timeline-q-label">' + q.label + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="timeline-legend">' +
+    '<div class="timeline-legend-item"><span class="timeline-dot supported"></span> Supported</div>' +
+    '<div class="timeline-legend-item"><span class="timeline-dot approaching"></span> Approaching EOL (≤180d)</div>' +
+    '<div class="timeline-legend-item"><span class="timeline-dot eol"></span> End of Life</div>' +
+    '<div class="timeline-legend-item"><span class="timeline-dot unknown"></span> Unknown</div>' +
+  '</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function pushReplacementToRemFlow() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    let pushedCount = 0;
+
+    assets.forEach(a => {
+      const info = getEOLInfo(a.os);
+      if (info.status !== 'approaching' && info.status !== 'eol') return;
+      const hwType = detectAssetHardwareType(a.hostname);
+      const cost = info.cost || ASSET_TYPE_COSTS[hwType] || 1200;
+      const eolDate = new Date(info.eolDate + 'T00:00:00');
+      const quarter = getQuarter(eolDate);
+
+      queue.push({
+        id: 'eol-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        cve: 'EOL-' + a.os.replace(/\s+/g, '-').toUpperCase(),
+        asset: a.hostname,
+        hostname: a.hostname,
+        description: 'EOL Lifecycle: ' + a.os + ' → ' + info.upgrade + ' (Q: ' + quarter.label + ', Est. Cost: $' + cost.toLocaleString() + ')',
+        command: 'Automated replacement project for ' + a.hostname + ' — OS: ' + a.os + ' — Est. Cost: $' + cost.toLocaleString(),
+        status: 'pending',
+        deployedAt: new Date().toISOString(),
+        source: 'TheValidator Lifecycle Management',
+        quarter: quarter.label,
+        estimatedCost: cost
+      });
+      pushedCount++;
+    });
+
+    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    showToast('📤 Created replacement project with ' + pushedCount + ' assets in RemFlow queue');
+    renderPipelineStatusBar();
+  } catch(e) { showToast('Error pushing to RemFlow'); }
+}
 function initFilters(){
   const healthSel=document.getElementById('filter-health');
   ['healthy','degraded','critical','offline'].forEach(s=>{
@@ -3470,6 +4279,7 @@ fetchSoftwareVersions().then(() => {
 
 // Update software badge on page load
 updateSoftwareBadge();
+updateLifecycleBadge();
 
 // Check Ollama availability (non-blocking)
 checkOllama();
