@@ -1316,6 +1316,7 @@ tbody tr:last-child td{border-bottom:none}
 </div><!-- /main -->
 
 <script>
+// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = 'security-tools:contract-version';  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
 // ===== DEBUG ERROR CATCHER =====
 window.onerror = function(msg, url, line, col, err) {
   var el = document.createElement('div');
