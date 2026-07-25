@@ -1338,7 +1338,119 @@ window.OllamaClient = OllamaClient;
 window.Prompts = Prompts;
 </script>
 <script>
-// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = KEYS.CONTRACT_VERSION_KEY;  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
+// ════ Storage Adapter — Dynamic Import from Launchpad ────────
+(function initStorageAdapter() {
+  window.__validatorStorageAdapter = null;
+  var vendoredAdapter = {
+    async read(key) {
+      try { var raw = localStorage.getItem(key); return raw === null || raw === undefined ? null : JSON.parse(raw); }
+      catch(e) { console.warn('[TheValidator storage] read error:', e.message); return null; }
+    },
+    async write(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch(e) { console.warn('[TheValidator storage] write error:', e.message); return false; }
+    },
+    async remove(key) {
+      try { localStorage.removeItem(key); return true; }
+      catch(e) { console.warn('[TheValidator storage] remove error:', e.message); return false; }
+    },
+    async readCollection(key) {
+      try { var raw = localStorage.getItem(key); if (!raw) return []; var val = JSON.parse(raw); return Array.isArray(val) ? val : (val.rows || val.data || []); }
+      catch(e) { return []; }
+    },
+    async writeCollection(key, records) {
+      try { localStorage.setItem(key, JSON.stringify(records)); return true; }
+      catch(e) { return false; }
+    },
+    async has(key) {
+      try { return localStorage.getItem(key) !== null; } catch(_) { return false; }
+    },
+    async quota() {
+      var used = 0;
+      try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k) used += k.length + (localStorage.getItem(k) || '').length; } } catch(_) {}
+      var usedBytes = used * 2, quotaBytes = 5 * 1024 * 1024;
+      return { usedBytes: usedBytes, quotaBytes: quotaBytes, remainingBytes: Math.max(0, quotaBytes - usedBytes), pctUsed: Math.round(usedBytes / quotaBytes * 100) };
+    }
+  };
+  // Try dynamic import from launchpad; fall back to vendored
+  try {
+    import('https://mrdchiang.github.io/launchpad/shared/storage-adapter.js')
+      .then(function(mod) {
+        window.__validatorStorageAdapter = mod.storage || mod.default || mod;
+        console.log('[TheValidator] ✅ Launchpad storage adapter loaded');
+      })
+      .catch(function() {
+        window.__validatorStorageAdapter = vendoredAdapter;
+        console.log('[TheValidator] ⚠️ Using vendored localStorage fallback');
+      });
+  } catch(e) {
+    window.__validatorStorageAdapter = vendoredAdapter;
+  }
+  // Synchronous fallback always immediately available
+  if (!window.__validatorStorageAdapter) {
+    window.__validatorStorageAdapter = vendoredAdapter;
+  }
+})();
+
+// ════ STORAGE Helpers (sync wrappers that delegate to adapter) ──
+function storageGet(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (raw === null || raw === undefined) return fallback !== undefined ? fallback : null;
+    return JSON.parse(raw);
+  } catch(e) { return fallback !== undefined ? fallback : null; }
+}
+function storageSet(key, value) {
+  try {
+    // Quota guard for evidence log
+    if (key === 'security-tools:validator-check-history') {
+      quotaPruneCheckHistoryBeforeWrite();
+    }
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || (e.message && e.message.indexOf('quota') !== -1)) {
+      console.error('[TheValidator] Quota exceeded writing "' + key + '". Data NOT saved.');
+    }
+    return false;
+  }
+}
+function storageRemove(key) {
+  try { localStorage.removeItem(key); return true; }
+  catch(e) { return false; }
+}
+
+// ════ Evidence Log Quota Pruning ──────────────────────────────
+var EVIDENCE_QUOTA_THRESHOLD_BYTES = 8 * 1024 * 1024; // 8MB
+function estimateStorageSize() {
+  try {
+    var total = 0;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k) total += k.length + (localStorage.getItem(k) || '').length;
+    }
+    return total * 2; // UTF-16 estimate
+  } catch(_) { return 0; }
+}
+function quotaPruneCheckHistoryBeforeWrite() {
+  try {
+    var totalSize = estimateStorageSize();
+    if (totalSize <= EVIDENCE_QUOTA_THRESHOLD_BYTES) return; // under threshold, no pruning needed
+    console.warn('[TheValidator] Storage at ' + (totalSize / 1024 / 1024).toFixed(2) + 'MB — pruning oldest 30 days of check history');
+    var history = storageGet('security-tools:validator-check-history', []);
+    if (!history.length) return;
+    var thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    var pruned = history.filter(function(h) {
+      return new Date(h.checkedAt).getTime() > thirtyDaysAgo;
+    });
+    if (pruned.length < history.length) {
+      localStorage.setItem('security-tools:validator-check-history', JSON.stringify(pruned));
+      console.log('[TheValidator] Pruned ' + (history.length - pruned.length) + ' old evidence records (30-day quota guard)');
+    }
+  } catch(e) { console.warn('[TheValidator] Quota prune error:', e.message); }
+}
+
+// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = 'security-tools:contract-version';  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
 // ===== DEBUG ERROR CATCHER =====
 window.onerror = function(msg, url, line, col, err) {
   var el = document.createElement('div');
@@ -1349,18 +1461,44 @@ window.onerror = function(msg, url, line, col, err) {
   return false;
 };
 
-// ===== LOCAL STORAGE KEYS =====
+// ===== LOCAL STORAGE KEYS (Full contract.js v2.0.0 — all 23 security-tools: keys) =====
 const KEYS = {
-  CONTRACT_VERSION_KEY:    'security-tools:contract-version',
-  VALIDATOR_GPO_BASELINE:  'security-tools:validator-gpo-baseline',
-  VALIDATOR_GPO_HISTORY:   'security-tools:validator-gpo-baseline-history',
-  REMEDIATION_QUEUE:       'security-tools:remediation-queue',
-  VALIDATED_REMEDIATIONS:  'security-tools:validated-remediations',
-  VERIFIED_QUEUE:          'security-tools:verified-queue',
-  LAST_REMEDIATION:        'security-tools:last-remediation',
-  LAUNCHPAD_QUEUE:         'security-tools:launchpad-queue',
-  LAST_LAUNCHPAD_PUSH:     'security-tools:last-launchpad-push',
-  VALIDATOR_CHECK_HISTORY: 'security-tools:validator-check-history',
+  // ── Debug ──────────────────────────────────────────────────────────────
+  ERROR_LOG:               'security-tools:error-log',
+
+  // ── ShieldView — Import ────────────────────────────────────────────────
+  IMPORTED_FINDINGS:        'security-tools:imported-findings',
+  IMPORTED_FINDINGS_META:   'security-tools:imported-findings-meta',
+  IMPORTED_ASSETS:          'security-tools:imported-assets',
+  IMPORTED_ASSETS_META:     'security-tools:imported-assets-meta',
+  SNIPEIT_ASSETS:           'security-tools:snipeit-assets',
+  SNIPEIT_ASSETS_META:      'security-tools:snipeit-assets-meta',
+  SNIPEIT_CONFIG:           'security-tools:snipeit-config',
+
+  // ── ShieldView — Live Feeds ────────────────────────────────────────────
+  KEV_CATALOG:              'security-tools:kev-catalog',
+  CONTRACT_VERSION_KEY:     'security-tools:contract-version',
+  CONTRACT_MIGRATION:       'security-tools:contract-migration',
+
+  // ── RemFlow — Remediation Pipeline ─────────────────────────────────────
+  REMEDIATION_QUEUE:         'security-tools:remediation-queue',
+  LAST_REMEDIATION:          'security-tools:last-remediation',
+  REMFLOW_DEPLOYMENTS:       'security-tools:remflow-deployments',
+  REMFLOW_LAST_IMPORT:       'security-tools:remflow-last-import',
+
+  // ── TheValidator — Verification ────────────────────────────────────────
+  VALIDATED_REMEDIATIONS:    'security-tools:validated-remediations',
+  VERIFIED_QUEUE:            'security-tools:verified-queue',
+  VALIDATOR_GPO_BASELINE:    'security-tools:validator-gpo-baseline',
+  VALIDATOR_GPO_HISTORY:     'security-tools:validator-gpo-baseline-history',
+  LAST_LAUNCHPAD_PUSH:       'security-tools:last-launchpad-push',
+  LAUNCHPAD_QUEUE:           'security-tools:launchpad-queue',
+
+  // ── Exception Tracking (v2) ────────────────────────────────────────────
+  EXCEPTIONS:                'security-tools:exceptions',
+
+  // ── TheValidator Tool-Specific ─────────────────────────────────────────
+  VALIDATOR_CHECK_HISTORY:   'security-tools:validator-check-history',
 };
 
 // ===== DATA =====
@@ -1472,30 +1610,28 @@ function buildCISLookup() {
 }
 const CIS_LOOKUP = buildCISLookup();
 
-// ===== GPO BASELINE (localStorage) =====
+// ===== GPO BASELINE (via STORAGE adapter) =====
 function getGPOBaseline() {
-  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_GPO_BASELINE) || '[]'); }
-  catch(e) { return []; }
+  return storageGet(KEYS.VALIDATOR_GPO_BASELINE, []);
 }
 function setGPOBaseline(data) {
-  localStorage.setItem(KEYS.VALIDATOR_GPO_BASELINE, JSON.stringify(data));
+  storageSet(KEYS.VALIDATOR_GPO_BASELINE, data);
 }
 function clearGPOBaseline() {
-  localStorage.removeItem(KEYS.VALIDATOR_GPO_BASELINE);
+  storageRemove(KEYS.VALIDATOR_GPO_BASELINE);
   alert('GPO baseline cleared.');
   showPage('gpo-baseline');
 }
 
 // GPO Drift history (array of snapshots)
 function getGPOBaselineHistory() {
-  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_GPO_HISTORY) || '[]'); }
-  catch(e) { return []; }
+  return storageGet(KEYS.VALIDATOR_GPO_HISTORY, []);
 }
 function saveGPOBaselineHistory(baseline) {
   const history = getGPOBaselineHistory();
   history.push({ timestamp: new Date().toISOString(), policies: baseline.length, snapshot: baseline.map(p => ({name:p.name, value:p.value, status:p.status})) });
   if (history.length > 10) history.shift();
-  localStorage.setItem(KEYS.VALIDATOR_GPO_HISTORY, JSON.stringify(history));
+  storageSet(KEYS.VALIDATOR_GPO_HISTORY, history);
 }
 
 // ===== DEMO GPO BASELINE DATA =====
@@ -2222,16 +2358,16 @@ function renderPendingVerifications() {
 
 function verifySingleItem(cve) {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
-    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
+    const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
     const item = queue.find(i => i.cve === cve || i.id === cve);
     if (!item) { showToast('Item not found in queue'); return; }
     item.status = 'verified';
     item.verifiedAt = new Date().toISOString();
     item.verifiedBy = 'TheValidator';
     validated.push({...item});
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
-    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
+    storageSet(KEYS.REMEDIATION_QUEUE, queue);
+    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
 
     // Phase 1.1: Also write to VERIFIED_QUEUE for ShieldView
     var asset = item.asset || item.hostname || 'Unknown';
@@ -2252,9 +2388,9 @@ function verifySingleItem(cve) {
       actual: actual || 'N/A',
       result: 'pass'
     };
-    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
     verifiedQueue.push(vqRecord);
-    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
+    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
 
     showToast('✅ Verified: ' + (item.cve || cve) + ' — Written to pipeline');
     renderPendingVerifications();
@@ -3382,7 +3518,7 @@ function updateMismatchBadge() {
 
 function pushToRemFlow(hostname, tool, field, cmd) {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
     queue.push({
       id: 'cv-' + Date.now(),
       cve: 'MISMATCH-' + tool.replace(/\s+/g, '-').toUpperCase(),
@@ -3394,7 +3530,7 @@ function pushToRemFlow(hostname, tool, field, cmd) {
       deployedAt: new Date().toISOString(),
       source: 'TheValidator Console vs Endpoint'
     });
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    storageSet(KEYS.REMEDIATION_QUEUE, queue);
     showToast('📤 Mismatch remediation pushed to RemFlow queue');
   } catch(e) { showToast('Error pushing to RemFlow'); }
 }
@@ -3651,21 +3787,21 @@ function initConsoleDropZone() {
   });
 }
 function checkCrossToolQueue() {
-  try { return JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]').filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
+  try { return storageGet(KEYS.REMEDIATION_QUEUE, []).filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
   catch(e) { return []; }
 }
 function checkValidatedRemediations() {
-  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]'); }
+  try { return storageGet(KEYS.VALIDATED_REMEDIATIONS, []); }
   catch(e) { return []; }
 }
 function verifyPendingRemediations() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
-    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
+    const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     if (pending.length === 0) return 0;
     const now = new Date().toISOString();
-    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
     pending.forEach(item => {
       item.status = 'verified';
       item.verifiedAt = now;
@@ -3692,19 +3828,19 @@ function verifyPendingRemediations() {
         result: 'pass'
       });
     });
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
-    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
-    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
-    localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify({action: 'verified', count: pending.length, at: now}));
+    storageSet(KEYS.REMEDIATION_QUEUE, queue);
+    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
+    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
+    storageSet(KEYS.LAST_REMEDIATION, {action: 'verified', count: pending.length, at: now});
     return pending.length;
   } catch(e) { return 0; }
 }
 
-// ===== EVIDENCE RETENTION (Append-Only History) =====
+// ===== EVIDENCE RETENTION (Append-Only History via STORAGE adapter) =====
 const CHECK_HISTORY_WINDOW_DAYS = 180;
 
 function getCheckHistory() {
-  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_CHECK_HISTORY) || '[]'); }
+  try { return storageGet(KEYS.VALIDATOR_CHECK_HISTORY, []); }
   catch(e) { return []; }
 }
 
@@ -3721,7 +3857,8 @@ function appendCheckHistory(asset, checks) {
       result: c.result
     });
   });
-  localStorage.setItem(KEYS.VALIDATOR_CHECK_HISTORY, JSON.stringify(history));
+  // storageSet triggers quotaPruneCheckHistoryBeforeWrite if >8MB
+  storageSet(KEYS.VALIDATOR_CHECK_HISTORY, history);
   pruneCheckHistory();
   return history;
 }
@@ -3731,7 +3868,7 @@ function pruneCheckHistory() {
   const cutoff = Date.now() - (CHECK_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const pruned = history.filter(h => new Date(h.checkedAt).getTime() > cutoff);
   if (pruned.length !== history.length) {
-    localStorage.setItem(KEYS.VALIDATOR_CHECK_HISTORY, JSON.stringify(pruned));
+    storageSet(KEYS.VALIDATOR_CHECK_HISTORY, pruned);
   }
 }
 
@@ -3970,7 +4107,7 @@ function updateLifecycleBadge() {
 
 function importFromRemFlow() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     const deployed = pending.filter(i => i.status === 'deployed').length;
     const pendingCount = pending.filter(i => i.status === 'pending').length;
@@ -4034,8 +4171,8 @@ function verifyPipelineItem(index) {
   try {
     const item = pipelineVerificationItems[index];
     if (!item) return;
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
-    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
+    const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
 
     item.status = 'verified';
     item.verifiedAt = new Date().toISOString();
@@ -4069,12 +4206,12 @@ function verifyPipelineItem(index) {
       actual: actual || 'N/A',
       result: 'pass'
     };
-    var verifiedQueue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
     verifiedQueue.push(vqRecord);
-    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(verifiedQueue));
+    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
 
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
-    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
+    storageSet(KEYS.REMEDIATION_QUEUE, queue);
+    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
 
     pipelineVerificationItems.splice(index, 1);
     renderVerificationItems();
@@ -4098,10 +4235,10 @@ function renderLaunchpadStatus() {
 
 function pushVerifiedToLaunchpad() {
   try {
-    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
+    const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
     if (validated.length === 0) { showToast('No verified items to push'); return; }
 
-    const launchpad = JSON.parse(localStorage.getItem(KEYS.LAUNCHPAD_QUEUE) || '[]');
+    const launchpad = storageGet(KEYS.LAUNCHPAD_QUEUE, []);
     validated.forEach(item => {
       launchpad.push({
         ...item,
@@ -4110,9 +4247,9 @@ function pushVerifiedToLaunchpad() {
       });
     });
 
-    localStorage.setItem(KEYS.LAUNCHPAD_QUEUE, JSON.stringify(launchpad));
-    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify([]));
-    localStorage.setItem(KEYS.LAST_LAUNCHPAD_PUSH, JSON.stringify({count: validated.length, at: new Date().toISOString()}));
+    storageSet(KEYS.LAUNCHPAD_QUEUE, launchpad);
+    storageSet(KEYS.VALIDATED_REMEDIATIONS, []);
+    storageSet(KEYS.LAST_LAUNCHPAD_PUSH, {count: validated.length, at: new Date().toISOString()});
 
     showToast('📤 Pushed ' + validated.length + ' verified items to Launchpad');
     renderPipelineStatusBar();
@@ -4149,8 +4286,8 @@ function refreshPipelineStatus() {
 
 function clearRemFlowQueue() {
   if (!confirm('Clear the RemFlow remediation queue? This cannot be undone.')) return;
-  localStorage.removeItem(KEYS.REMEDIATION_QUEUE);
-  localStorage.removeItem(KEYS.VALIDATED_REMEDIATIONS);
+  storageRemove(KEYS.REMEDIATION_QUEUE);
+  storageRemove(KEYS.VALIDATED_REMEDIATIONS);
   pipelineVerificationItems = [];
   showToast('🗑️ RemFlow queue cleared');
   renderPipelinePage();
@@ -4453,7 +4590,7 @@ function renderTimeline() {
 
 function pushReplacementToRemFlow() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
     let pushedCount = 0;
 
     assets.forEach(a => {
@@ -4480,7 +4617,7 @@ function pushReplacementToRemFlow() {
       pushedCount++;
     });
 
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    storageSet(KEYS.REMEDIATION_QUEUE, queue);
     showToast('📤 Created replacement project with ' + pushedCount + ' assets in RemFlow queue');
     renderPipelineStatusBar();
   } catch(e) { showToast('Error pushing to RemFlow'); }
