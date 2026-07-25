@@ -1374,7 +1374,7 @@ window.Prompts = Prompts;
   };
   // Try dynamic import from launchpad; fall back to vendored
   try {
-    import('https://mrdchiang.github.io/launchpad/shared/storage-adapter.js')
+    import('/launchpad/shared/storage-adapter.js')
       .then(function(mod) {
         window.__validatorStorageAdapter = mod.storage || mod.default || mod;
         console.log('[TheValidator] ✅ Launchpad storage adapter loaded');
@@ -1450,7 +1450,7 @@ function quotaPruneCheckHistoryBeforeWrite() {
   } catch(e) { console.warn('[TheValidator] Quota prune error:', e.message); }
 }
 
-// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = 'security-tools:contract-version';  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
+// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = 'security-tools:contract-version';  var VER = '2.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
 // ===== DEBUG ERROR CATCHER =====
 window.onerror = function(msg, url, line, col, err) {
   var el = document.createElement('div');
@@ -1958,38 +1958,15 @@ let softwareVersionsCache = {};
 let softwareFetchComplete = false;
 
 async function fetchSoftwareVersions() {
-  const promises = IT_SOFTWARE.map(async (sw) => {
-    try {
-      const resp = await fetch(sw.fetchUrl);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const data = await resp.json();
-      let latestVer;
-      if (sw.fetchPath) {
-        latestVer = sw.fetchPath.split('.').reduce((obj, key) => {
-          const arrMatch = key.match(/^\[(\d+)\]$/);
-          if (arrMatch) return obj ? obj[parseInt(arrMatch[1])] : undefined;
-          if (key.endsWith(']')) {
-            const parts = key.split('[');
-            const arrIdx = parseInt(parts[1].replace(']', ''));
-            return obj ? obj[parts[0]][arrIdx] : undefined;
-          }
-          return obj ? obj[key] : undefined;
-        }, data);
-      }
-      if (typeof latestVer === 'string' && latestVer.startsWith('v')) latestVer = latestVer.slice(1);
-      softwareVersionsCache[sw.name] = latestVer || sw.fallback;
-    } catch(e) {
-      softwareVersionsCache[sw.name] = sw.fallback;
-    }
+  IT_SOFTWARE.forEach(function(sw) {
+    softwareVersionsCache[sw.name] = sw.fallback;
   });
-  await Promise.allSettled(promises);
-  softwareFetchComplete = true;
+  softwareFetchComplete = false;
   if (document.querySelector('.nav-item[data-page="software"].active')) {
     renderSoftware();
   }
   updateSoftwareBadge();
 }
-
 function getLatestVersion(name) {
   return softwareVersionsCache[name] || IT_SOFTWARE.find(s => s.name === name)?.fallback || '—';
 }
@@ -2335,6 +2312,15 @@ function renderDashboard(){
   }
 }
 
+function escHtml(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ===== PENDING VERIFICATIONS (RemFlow Integration) =====
 function renderPendingVerifications() {
   const pendingItems = checkCrossToolQueue();
@@ -2346,58 +2332,41 @@ function renderPendingVerifications() {
     return;
   }
 
-  container.innerHTML = pendingItems.map(item =>
-    '<div class="pending-item">' +
-      '<span class="pending-cve">' + (item.cve || 'N/A') + '</span>' +
-      '<span class="pending-asset">' + (item.asset || item.hostname || 'Unknown') + '</span>' +
-      '<span class="pending-time">' + (item.deployedAt ? new Date(item.deployedAt).toLocaleString() : 'Just now') + '</span>' +
-      '<button class="btn btn-xs btn-primary" onclick="verifySingleItem(\'' + (item.cve || item.id || '') + '\')">Verify Now</button>' +
-    '</div>'
-  ).join('');
+  container.innerHTML = pendingItems.map(item => {
+    const itemKey = String(item.cve || item.id || '');
+    return '<div class="pending-item">' +
+      '<span class="pending-cve">' + escHtml(item.cve || 'N/A') + '</span>' +
+      '<span class="pending-asset">' + escHtml(verificationAssetLabel(item)) + '</span>' +
+      '<span class="pending-time">' + escHtml(item.deployedAt ? new Date(item.deployedAt).toLocaleString() : 'Just now') + '</span>' +
+      '<button class="btn btn-xs btn-primary" onclick=\'verifySingleItem(' + escHtml(JSON.stringify(itemKey)) + ')\'>Verify Now</button>' +
+    '</div>';
+  }).join('');
 }
-
 function verifySingleItem(cve) {
   try {
     const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
     const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
     const item = queue.find(i => i.cve === cve || i.id === cve);
     if (!item) { showToast('Item not found in queue'); return; }
+
+    const verifiedAt = new Date().toISOString();
+    const verificationItem = {...item, status: 'verified', verifiedAt: verifiedAt, verifiedBy: 'TheValidator'};
+    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
+    const nextVerifiedQueue = verifiedQueue.concat(buildVerificationRecords(verificationItem, verifiedAt, 'pass'));
+    if (!storageSet(KEYS.VERIFIED_QUEUE, nextVerifiedQueue)) throw new Error('verified queue write failed');
+
     item.status = 'verified';
-    item.verifiedAt = new Date().toISOString();
+    item.verifiedAt = verifiedAt;
     item.verifiedBy = 'TheValidator';
     validated.push({...item});
-    storageSet(KEYS.REMEDIATION_QUEUE, queue);
-    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
+    if (!storageSet(KEYS.REMEDIATION_QUEUE, queue)) throw new Error('remediation queue write failed');
+    if (!storageSet(KEYS.VALIDATED_REMEDIATIONS, validated)) throw new Error('validated remediation write failed');
 
-    // Phase 1.1: Also write to VERIFIED_QUEUE for ShieldView
-    var asset = item.asset || item.hostname || 'Unknown';
-    var expected = item.expected || '';
-    var actual = item.actual || item.console || 'Verified';
-    var evidenceStr = (expected && actual)
-      ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
-      : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
-    var vqRecord = {
-      findingId: item.id || (item.cve + '_' + asset),
-      asset: asset,
-      cve: item.cve || 'N/A',
-      verifiedAt: item.verifiedAt,
-      verifiedByTool: 'thevalidator',
-      checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
-      evidence: evidenceStr,
-      expected: expected || 'N/A',
-      actual: actual || 'N/A',
-      result: 'pass'
-    };
-    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
-    verifiedQueue.push(vqRecord);
-    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
-
-    showToast('✅ Verified: ' + (item.cve || cve) + ' — Written to pipeline');
+    showToast('Verified: ' + (item.cve || cve) + ' - Written to pipeline');
     renderPendingVerifications();
     renderDashboard();
   } catch(e) { showToast('Error verifying item'); }
 }
-
 function verifyAllPending() {
   const count = verifyPendingRemediations();
   if (count > 0) {
@@ -3543,6 +3512,12 @@ let isOllamaAvailable = null;
 let currentDebugContext = null;
 
 async function checkOllama() {
+  if (!window.OllamaClient || typeof window.OllamaClient.checkConnection !== 'function') {
+    isOllamaAvailable = false;
+    const status = document.getElementById('ollama-status');
+    if (status) status.innerHTML = '<span style="color:var(--critical)">Not available</span>';
+    return;
+  }
   const result = await window.OllamaClient.checkConnection({ timeoutMs: 3000 });
   if (result.ok) {
     isOllamaAvailable = true;
@@ -3786,6 +3761,71 @@ function initConsoleDropZone() {
     if (files.length > 0) handleConsoleCSV(files[0]);
   });
 }
+function uniqueNonEmpty(values) {
+  return [...new Set((values || []).map(function(v) { return String(v || '').trim(); }).filter(Boolean))];
+}
+
+function verificationAssetLabel(item) {
+  var assets = uniqueNonEmpty([].concat(item && item.assets || [], item && item.targets || [], item && item.asset, item && item.hostname));
+  if (assets.length === 0) return 'Unknown';
+  if (assets.length === 1) return assets[0];
+  return assets.slice(0, 3).join(', ') + (assets.length > 3 ? ' +' + (assets.length - 3) : '');
+}
+
+function fallbackFindingId(item, asset, index) {
+  return (item.id || item.remediationKey || item.cve || 'remediation') + '|' + asset + '|' + index;
+}
+
+function verificationTargetsForItem(item) {
+  var findings = Array.isArray(item && item.findings) ? item.findings : [];
+  if (findings.length > 0) {
+    return findings.map(function(f, index) {
+      var asset = f.asset || f.hostname || '';
+      return {
+        findingId: f.findingId || f.identityKey || fallbackFindingId(item, asset || 'Unknown', index),
+        asset: asset,
+        cve: f.cve || item.cve || 'N/A',
+        checkName: f.check || f.name || item.checkName || item.toolName || item.name || 'Remediation Re-check',
+        expected: item.expected || '',
+        actual: item.actual || item.console || 'Verified'
+      };
+    }).filter(function(t) { return !!t.asset; });
+  }
+
+  var assets = uniqueNonEmpty([].concat(item && item.assets || [], item && item.targets || [], item && item.asset, item && item.hostname));
+  return assets.map(function(asset, index) {
+    return {
+      findingId: item.findingId || fallbackFindingId(item, asset, index),
+      asset: asset,
+      cve: item.cve || 'N/A',
+      checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
+      expected: item.expected || '',
+      actual: item.actual || item.console || 'Verified'
+    };
+  });
+}
+
+function buildVerificationRecords(item, verifiedAt, result) {
+  return verificationTargetsForItem(item).map(function(target) {
+    var expected = target.expected || '';
+    var actual = target.actual || 'Verified';
+    var evidenceStr = (expected && actual)
+      ? 'Expected ' + expected + ', Found ' + actual + (result === 'fail' ? ' — NO MATCH' : ' — MATCH')
+      : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
+    return {
+      findingId: target.findingId,
+      asset: target.asset,
+      cve: target.cve,
+      verifiedAt: verifiedAt,
+      verifiedByTool: 'thevalidator',
+      checkName: target.checkName,
+      evidence: evidenceStr,
+      expected: expected || 'N/A',
+      actual: actual || 'N/A',
+      result: result || 'pass'
+    };
+  });
+}
 function checkCrossToolQueue() {
   try { return storageGet(KEYS.REMEDIATION_QUEUE, []).filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
   catch(e) { return []; }
@@ -3801,41 +3841,27 @@ function verifyPendingRemediations() {
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     if (pending.length === 0) return 0;
     const now = new Date().toISOString();
+
     var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
+    const verificationRecords = [];
+    pending.forEach(item => {
+      const verificationItem = {...item, status: 'verified', verifiedAt: now, verifiedBy: 'TheValidator'};
+      buildVerificationRecords(verificationItem, now, 'pass').forEach(function(record) { verificationRecords.push(record); });
+    });
+    if (!storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue.concat(verificationRecords))) throw new Error('verified queue write failed');
+
     pending.forEach(item => {
       item.status = 'verified';
       item.verifiedAt = now;
       item.verifiedBy = 'TheValidator';
       validated.push({...item, verifiedAt: now, verifiedBy: 'TheValidator'});
-
-      // Phase 1.1: Also build VERIFIED_QUEUE record
-      var asset = item.asset || item.hostname || 'Unknown';
-      var expected = item.expected || '';
-      var actual = item.actual || item.console || 'Verified';
-      var evidenceStr = (expected && actual)
-        ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
-        : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
-      verifiedQueue.push({
-        findingId: item.id || (item.cve + '_' + asset),
-        asset: asset,
-        cve: item.cve || 'N/A',
-        verifiedAt: now,
-        verifiedByTool: 'thevalidator',
-        checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
-        evidence: evidenceStr,
-        expected: expected || 'N/A',
-        actual: actual || 'N/A',
-        result: 'pass'
-      });
     });
-    storageSet(KEYS.REMEDIATION_QUEUE, queue);
-    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
-    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
+    if (!storageSet(KEYS.REMEDIATION_QUEUE, queue)) throw new Error('remediation queue write failed');
+    if (!storageSet(KEYS.VALIDATED_REMEDIATIONS, validated)) throw new Error('validated remediation write failed');
     storageSet(KEYS.LAST_REMEDIATION, {action: 'verified', count: pending.length, at: now});
     return pending.length;
   } catch(e) { return 0; }
 }
-
 // ===== EVIDENCE RETENTION (Append-Only History via STORAGE adapter) =====
 const CHECK_HISTORY_WINDOW_DAYS = 180;
 
@@ -4156,17 +4182,18 @@ function renderVerificationItems() {
     container.innerHTML = '<div style="color:var(--text-muted);padding:12px 0">Click "Import from RemFlow" to load pending remediations.</div>';
     return;
   }
-  container.innerHTML = pipelineVerificationItems.map(item =>
-    '<div class="pending-item">' +
-      '<span class="pending-cve">' + (item.cve || 'N/A') + '</span>' +
-      '<span class="pending-asset">' + (item.asset || item.hostname || 'Unknown') + '</span>' +
-      '<span class="pending-time">' + (item.deployedAt ? new Date(item.deployedAt).toLocaleString() : 'Just now') + '</span>' +
-      '<span class="badge ' + (item.status === 'deployed' ? 'badge-success' : 'badge-pending') + '">' + (item.status || 'pending') + '</span>' +
-      '<button class="btn btn-xs btn-primary" onclick="verifyPipelineItem(' + item.importIndex + ')">Verify Now</button>' +
-    '</div>'
-  ).join('');
+  container.innerHTML = pipelineVerificationItems.map(item => {
+    const importIndex = Number.isFinite(Number(item.importIndex)) ? Number(item.importIndex) : -1;
+    const status = item.status === 'deployed' ? 'deployed' : 'pending';
+    return '<div class="pending-item">' +
+      '<span class="pending-cve">' + escHtml(item.cve || 'N/A') + '</span>' +
+      '<span class="pending-asset">' + escHtml(verificationAssetLabel(item)) + '</span>' +
+      '<span class="pending-time">' + escHtml(item.deployedAt ? new Date(item.deployedAt).toLocaleString() : 'Just now') + '</span>' +
+      '<span class="badge ' + (status === 'deployed' ? 'badge-success' : 'badge-pending') + '">' + escHtml(status) + '</span>' +
+      '<button class="btn btn-xs btn-primary" onclick="verifyPipelineItem(' + importIndex + ')">Verify Now</button>' +
+    '</div>';
+  }).join('');
 }
-
 function verifyPipelineItem(index) {
   try {
     const item = pipelineVerificationItems[index];
@@ -4174,52 +4201,34 @@ function verifyPipelineItem(index) {
     const queue = storageGet(KEYS.REMEDIATION_QUEUE, []);
     const validated = storageGet(KEYS.VALIDATED_REMEDIATIONS, []);
 
+    const verifiedAt = new Date().toISOString();
+    const verificationItem = {...item, status: 'verified', verifiedAt: verifiedAt, verifiedBy: 'TheValidator'};
+    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
+    const nextVerifiedQueue = verifiedQueue.concat(buildVerificationRecords(verificationItem, verifiedAt, 'pass'));
+    if (!storageSet(KEYS.VERIFIED_QUEUE, nextVerifiedQueue)) throw new Error('verified queue write failed');
+
     item.status = 'verified';
-    item.verifiedAt = new Date().toISOString();
+    item.verifiedAt = verifiedAt;
     item.verifiedBy = 'TheValidator';
 
     // Update queue
     const qItem = queue.find(i => (i.cve === item.cve || i.id === item.id));
     if (qItem) {
       qItem.status = 'verified';
-      qItem.verifiedAt = item.verifiedAt;
+      qItem.verifiedAt = verifiedAt;
       qItem.verifiedBy = 'TheValidator';
     }
     validated.push({...item});
 
-    // Phase 1.1: Also write to VERIFIED_QUEUE for ShieldView
-    var asset = item.asset || item.hostname || 'Unknown';
-    var expected = item.expected || '';
-    var actual = item.actual || item.console || 'Verified';
-    var evidenceStr = (expected && actual)
-      ? 'Expected ' + expected + ', Found ' + actual + ' — MATCH'
-      : (expected ? 'Expected ' + expected + ', Confirmed present' : 'Remediation verified as deployed');
-    var vqRecord = {
-      findingId: item.id || (item.cve + '_' + asset),
-      asset: asset,
-      cve: item.cve || 'N/A',
-      verifiedAt: item.verifiedAt,
-      verifiedByTool: 'thevalidator',
-      checkName: item.checkName || item.toolName || item.name || 'Remediation Re-check',
-      evidence: evidenceStr,
-      expected: expected || 'N/A',
-      actual: actual || 'N/A',
-      result: 'pass'
-    };
-    var verifiedQueue = storageGet(KEYS.VERIFIED_QUEUE, []);
-    verifiedQueue.push(vqRecord);
-    storageSet(KEYS.VERIFIED_QUEUE, verifiedQueue);
-
-    storageSet(KEYS.REMEDIATION_QUEUE, queue);
-    storageSet(KEYS.VALIDATED_REMEDIATIONS, validated);
+    if (!storageSet(KEYS.REMEDIATION_QUEUE, queue)) throw new Error('remediation queue write failed');
+    if (!storageSet(KEYS.VALIDATED_REMEDIATIONS, validated)) throw new Error('validated remediation write failed');
 
     pipelineVerificationItems.splice(index, 1);
     renderVerificationItems();
     renderPipelineStatusBar();
-    showToast('✅ Verified: ' + (item.cve || 'Item') + ' — Written to pipeline');
+    showToast('Verified: ' + (item.cve || 'Item') + ' - Written to pipeline');
   } catch(e) { showToast('Error verifying item'); }
 }
-
 function renderLaunchpadStatus() {
   const container = document.getElementById('pipeline-launchpad-status');
   if (!container) return;
@@ -4269,7 +4278,7 @@ function renderPipelineHistory() {
   container.innerHTML = validated.map(item =>
     '<div class="pending-item">' +
       '<span class="pending-cve">' + (item.cve || 'N/A') + '</span>' +
-      '<span class="pending-asset">' + (item.asset || item.hostname || 'Unknown') + '</span>' +
+      '<span class="pending-asset">' + verificationAssetLabel(item) + '</span>' +
       '<span class="pending-time">Verified: ' + (item.verifiedAt ? new Date(item.verifiedAt).toLocaleString() : 'N/A') + '</span>' +
       '<span class="badge badge-success">Verified</span>' +
     '</div>'
@@ -4680,6 +4689,156 @@ checkOllama();
       }
     }
   } catch(e) {}
+})();
+
+
+// ===== SUITE PIPELINE HEALTH UI =====
+(function(){
+  'use strict';
+  const APP_NAME = "TheValidator";
+  const CONTRACT_VERSION = '2.0.0';
+  const KEYS = {
+    CONTRACT_VERSION: 'security-tools:contract-version',
+    FINDINGS: 'security-tools:imported-findings',
+    REMEDIATION_QUEUE: 'security-tools:remediation-queue',
+    VALIDATED_REMEDIATIONS: 'security-tools:validated-remediations',
+    VERIFIED_QUEUE: 'security-tools:verified-queue',
+    LAST_REMEDIATION: 'security-tools:last-remediation',
+    LAST_LAUNCHPAD_PUSH: 'security-tools:last-launchpad-push'
+  };
+
+  function readCollection(key, issues) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && Array.isArray(parsed.rows)) return parsed.rows;
+      if (parsed && Array.isArray(parsed.data)) return parsed.data;
+      issues.push(key + ' is not an array collection');
+      return [];
+    } catch(e) {
+      issues.push(key + ' contains unreadable JSON');
+      return [];
+    }
+  }
+
+  function normalize(value) { return String(value || '').trim().toUpperCase(); }
+  function unique(values) { return Array.from(new Set((values || []).map(v => String(v || '').trim()).filter(Boolean))); }
+  function isCanonicalRemediation(item) {
+    return !!(item && typeof item.cve === 'string' && item.cve && typeof item.name === 'string' && item.name && Array.isArray(item.assets) && item.assets.length > 0 && ['pending','queued','deployed','verified','failed','blocked','rolledBack'].includes(item.status));
+  }
+  function findingIdentity(finding) {
+    if (!finding) return '';
+    if (finding.findingId || finding.id) return String(finding.findingId || finding.id);
+    return [finding.cve, finding.asset || finding.hostname, finding.port || '', finding.pluginId || '', finding.check || finding.name || ''].map(normalize).join('|');
+  }
+  function verificationMatched(record, findings) {
+    const identity = normalize(record.findingId || record.identityKey || record.sourceFindingId || '');
+    if (identity && findings.some(f => unique([f.findingId, f.id, findingIdentity(f)]).map(normalize).includes(identity))) return true;
+    const cve = normalize(record.cve);
+    const asset = normalize(record.asset || record.hostname || '');
+    return !!(cve && asset && findings.some(f => normalize(f.cve) === cve && normalize(f.asset || f.hostname || '') === asset));
+  }
+  function getState() {
+    const issues = [];
+    const storedVersion = localStorage.getItem(KEYS.CONTRACT_VERSION);
+    if (storedVersion && storedVersion !== CONTRACT_VERSION) issues.push('Contract version mismatch: stored ' + storedVersion + ', expected ' + CONTRACT_VERSION);
+    const findings = readCollection(KEYS.FINDINGS, issues);
+    const queue = readCollection(KEYS.REMEDIATION_QUEUE, issues);
+    const validated = readCollection(KEYS.VALIDATED_REMEDIATIONS, issues);
+    const verifiedQueue = readCollection(KEYS.VERIFIED_QUEUE, issues);
+    queue.forEach((item, index) => { if (!isCanonicalRemediation(item)) issues.push('Remediation queue item #' + (index + 1) + ' is not canonical'); });
+    verifiedQueue.forEach((record, index) => { if (!verificationMatched(record, findings)) issues.push('Verified queue item #' + (index + 1) + ' has no matching ShieldView finding'); });
+    return {
+      queue, validated, verifiedQueue, issues,
+      pending: queue.filter(i => i.status === 'pending').length,
+      queued: queue.filter(i => i.status === 'queued').length,
+      deployed: queue.filter(i => i.status === 'deployed').length,
+      verified: queue.filter(i => i.status === 'verified').length + validated.length + verifiedQueue.filter(i => i.result === 'pass').length,
+      failed: queue.filter(i => i.status === 'failed').length + verifiedQueue.filter(i => i.result === 'fail').length,
+      blocked: queue.filter(i => i.status === 'blocked').length,
+      rolledBack: queue.filter(i => i.status === 'rolledBack').length
+    };
+  }
+  function addStyles() {
+    if (document.getElementById('suite-health-style')) return;
+    const style = document.createElement('style');
+    style.id = 'suite-health-style';
+    style.textContent = '.suite-health{position:sticky;top:0;z-index:9999;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:#101820;color:#e8eef4;border-bottom:1px solid rgba(255,255,255,.14);font:12px/1.3 system-ui,-apple-system,Segoe UI,sans-serif}.suite-health strong{font-size:12px;color:#fff}.suite-health-step{display:inline-flex;align-items:center;gap:6px;color:#c8d4df}.suite-health-pill{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:2px 8px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#e8eef4;border-radius:999px}.suite-health-pill[data-hot="true"]{border-color:#f0b429;color:#ffe8a3}.suite-health-spacer{flex:1}.suite-health-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font:12px system-ui}.suite-health-btn[data-issues="true"]{background:#4a1f26;border-color:#ff6b7a}.suite-issues{position:fixed;right:14px;top:48px;z-index:10000;width:min(420px,calc(100vw - 28px));max-height:60vh;overflow:auto;background:#111820;color:#e8eef4;border:1px solid rgba(255,255,255,.2);box-shadow:0 18px 48px rgba(0,0,0,.35);border-radius:8px;padding:12px;display:none}.suite-issues.open{display:block}.suite-issues h3{margin:0 0 8px;font-size:14px}.suite-issues-list{display:grid;gap:8px}.suite-issue{padding:8px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#ffd7dd;font-size:12px}.suite-issue-empty{color:#a7f3c1}.suite-health + .suite-issues + *{scroll-margin-top:44px}';
+    document.head.appendChild(style);
+  }
+  function pill(label, value, hot) {
+    const el = document.createElement('span');
+    el.className = 'suite-health-pill';
+    if (hot) el.dataset.hot = 'true';
+    el.textContent = label + ': ' + value;
+    return el;
+  }
+  function render() {
+    addStyles();
+    let bar = document.getElementById('suite-health');
+    let drawer = document.getElementById('suite-issues');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'suite-health';
+      bar.className = 'suite-health';
+      drawer = document.createElement('div');
+      drawer.id = 'suite-issues';
+      drawer.className = 'suite-issues';
+      document.body.insertBefore(drawer, document.body.firstChild);
+      document.body.insertBefore(bar, drawer);
+    }
+    const state = getState();
+    bar.textContent = '';
+    const title = document.createElement('strong');
+    title.textContent = APP_NAME;
+    bar.appendChild(title);
+    const flow = document.createElement('span');
+    flow.className = 'suite-health-step';
+    flow.textContent = 'ShieldView -> RemFlow -> TheValidator -> ShieldView';
+    bar.appendChild(flow);
+    bar.appendChild(pill('pending', state.pending, state.pending > 0));
+    bar.appendChild(pill('queued', state.queued, state.queued > 0));
+    bar.appendChild(pill('deployed', state.deployed, state.deployed > 0));
+    bar.appendChild(pill('verified', state.verified, false));
+    bar.appendChild(pill('failed', state.failed, state.failed > 0));
+    bar.appendChild(pill('blocked', state.blocked, state.blocked > 0));
+    const spacer = document.createElement('span');
+    spacer.className = 'suite-health-spacer';
+    bar.appendChild(spacer);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'suite-health-btn';
+    btn.dataset.issues = state.issues.length > 0 ? 'true' : 'false';
+    btn.textContent = 'Pipeline Issues (' + state.issues.length + ')';
+    btn.onclick = function(){ drawer.classList.toggle('open'); };
+    bar.appendChild(btn);
+    drawer.textContent = '';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Pipeline Issues';
+    drawer.appendChild(heading);
+    const list = document.createElement('div');
+    list.className = 'suite-issues-list';
+    if (state.issues.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'suite-issue-empty';
+      empty.textContent = 'No malformed queue records or unmatched verification records detected.';
+      list.appendChild(empty);
+    } else {
+      state.issues.forEach(function(issue) {
+        const item = document.createElement('div');
+        item.className = 'suite-issue';
+        item.textContent = issue;
+        list.appendChild(item);
+      });
+    }
+    drawer.appendChild(list);
+  }
+  window.__renderSuitePipelineHealth = render;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render); else render();
+  window.addEventListener('storage', function(e){ if (e.key && e.key.indexOf('security-tools:') === 0) render(); });
+  setInterval(render, 5000);
 })();
 </script>
 
