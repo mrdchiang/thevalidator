@@ -485,6 +485,19 @@ tbody tr:last-child td{border-bottom:none}
 .history-dot.fail{background:var(--critical)}
 .history-dot.warn{background:var(--medium)}
 
+/* ===== COMPLIANCE SPARKLINE ===== */
+.sparkline-cell{min-width:90px}
+.sparkline-bar{display:inline-block;width:7px;border-radius:1px;margin-right:1px;vertical-align:bottom;transition:opacity 0.2s}
+.sparkline-bar:hover{opacity:0.7}
+.sparkline-bar.pass{background:var(--low)}
+.sparkline-bar.fail{background:var(--critical)}
+.sparkline-bar.warn{background:var(--medium)}
+.sparkline-tooltip{font-size:10px;color:var(--text-muted);margin-top:2px}
+.flap-badge{display:inline-block;background:#442200;color:var(--high);font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.noncomp-badge{display:inline-block;background:#350800;color:var(--critical);font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.evidence-section{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.evidence-summary{font-size:11px;color:var(--text-muted);font-style:italic}
+
 /* ===== DRIFT ROW ===== */
 .drift-row {
   display: flex;
@@ -868,8 +881,8 @@ tbody tr:last-child td{border-bottom:none}
         </div>
         <div class="detail-info">
           <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="var v=verifyPendingRemediations();alert('Running health check on '+detailAsset.hostname+'... (simulated)'+(v>0?'\\n\\n✅ '+v+' pending remediation(s) verified via cross-tool bridge.':'\\n\\nNo pending remediations to verify.'))">⚡ Run Health Check Now</button>
-            <button class="btn btn-sm" onclick="alert('Exporting report for '+detailAsset.hostname+'... (simulated)' )">📄 Export Report</button>
+            <button class="btn btn-primary btn-sm" onclick="runHealthCheckOnAsset()">⚡ Run Health Check Now</button>
+            <button class="btn btn-sm" onclick="exportEvidenceCSV(detailAsset.hostname)">📊 Export Evidence</button>
             <button class="btn btn-sm" onclick="exportAllCommands(detailAsset.hostname)" style="border-color:var(--low)">📋 Export Fixes for PDQ/SCCM</button>
             <a href="https://mrdchiang.github.io/amp-shield/#/findings" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
             <a href="https://mrdchiang.github.io/remflow/#/remediations" target="_blank" class="btn btn-sm" id="remflow-link" style="margin-top:0">🛠️ Remediate via RemFlow</a>
@@ -887,8 +900,11 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card-header"><h3>🔍 Check Results</h3></div>
         <div class="card-body table-wrap">
           <table><thead><tr>
-            <th>Tool / Service</th><th>Expected</th><th>Actual</th><th>Result</th><th>Last Verified</th>
+            <th>Tool / Service</th><th>Expected</th><th>Actual</th><th>Result</th><th>Last Verified</th><th>History (Last 10)</th>
           </tr></thead><tbody id="detail-checks"></tbody></table>
+        </div>
+        <div id="evidence-summary" class="card-body evidence-section" style="border-top:1px solid var(--border);padding-top:10px">
+          <span class="evidence-summary" id="evidence-text">No previous check history. Run a health check to start recording evidence.</span>
         </div>
       </div>
 
@@ -1315,6 +1331,12 @@ tbody tr:last-child td{border-bottom:none}
   </div><!-- /content -->
 </div><!-- /main -->
 
+<script type="module">
+import * as OllamaClient from './js/shared/ollama-client.js';
+import * as Prompts from './js/shared/prompts.js';
+window.OllamaClient = OllamaClient;
+window.Prompts = Prompts;
+</script>
 <script>
 // ════ Contract Version Check ─────────────────────────────────(function(){  var CV = KEYS.CONTRACT_VERSION_KEY;  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
 // ===== DEBUG ERROR CATCHER =====
@@ -1338,6 +1360,7 @@ const KEYS = {
   LAST_REMEDIATION:        'security-tools:last-remediation',
   LAUNCHPAD_QUEUE:         'security-tools:launchpad-queue',
   LAST_LAUNCHPAD_PUSH:     'security-tools:last-launchpad-push',
+  VALIDATOR_CHECK_HISTORY: 'security-tools:validator-check-history',
 };
 
 // ===== DATA =====
@@ -2389,15 +2412,34 @@ function showDetail(hostname){
   document.getElementById('detail-health').innerHTML=badgeHtml(a.health);
   document.getElementById('detail-verified').textContent=a.last;
 
-  document.getElementById('detail-checks').innerHTML=a.checks.map(c=>
-    '<tr>'+
-      '<td style="font-weight:500;color:var(--text-primary)">'+c.name+'</td>'+
+  document.getElementById('detail-checks').innerHTML=a.checks.map(c=>{
+    const hist=getAssetCheckHistory(a.hostname,c.name);
+    const nonCompDays=getNonComplianceDuration(a.hostname,c.name);
+    const isFlapping=detectFlapping(a.hostname,c.name);
+    const sparkline=renderComplianceSparkline(a.hostname,c.name);
+    let extra='';
+    if(isFlapping) extra='<span class="flap-badge">🔄 Flapping</span>';
+    if(nonCompDays>0&&c.result!=='pass') extra='<span class="noncomp-badge">⏱ '+nonCompDays+' run'+(nonCompDays>1?'s':'')+' non-compliant</span>'+extra;
+    return '<tr>'+
+      '<td style="font-weight:500;color:var(--text-primary)">'+c.name+extra+'</td>'+
       '<td style="font-size:12px;color:var(--text-muted)">'+c.expected+'</td>'+
       '<td style="'+(c.result==='fail'?'color:var(--critical)':c.result==='warn'?'color:var(--medium)':'color:var(--low)')+'">'+c.actual+'</td>'+
       '<td>'+resultIcon(c.result)+'</td>'+
       '<td style="font-size:12px">'+c.last+'</td>'+
-    '</tr>'
-  ).join('');
+      '<td class="sparkline-cell">'+sparkline+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // Update evidence summary
+  const evHist=getCheckHistory().filter(h=>h.asset===a.hostname);
+  const evText=document.getElementById('evidence-text');
+  if(evText){
+    if(evHist.length===0) evText.textContent='No previous check history. Run a health check to start recording evidence.';
+    else {
+      const runs=new Set(evHist.map(h=>h.checkedAt.slice(0,16))).size;
+      evText.textContent='📋 '+evHist.length+' evidence records across '+runs+' check run(s) — retained for '+CHECK_HISTORY_WINDOW_DAYS+' days. Export for audit.';
+    }
+  }
 
   document.getElementById('detail-compare').innerHTML=a.compare.map(c=>
     '<tr>'+
@@ -2488,7 +2530,7 @@ function showDetail(hostname){
   };
   document.getElementById('cve-count-value').textContent = cveMap[prefix] || randInt(2, 12);
 
-  showPage('detail');
+  showPage('detail',a.hostname);
 }
 
 // ===== EXPORT COMMANDS =====
@@ -3365,22 +3407,17 @@ let isOllamaAvailable = null;
 let currentDebugContext = null;
 
 async function checkOllama() {
-  try {
-    const resp = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) });
-    if (resp.ok) {
-      isOllamaAvailable = true;
-      const data = await resp.json();
-      const models = (data.models || []).map(m => m.name);
-      const sel = document.getElementById('ollama-model');
-      if (models.length > 0) {
-        sel.innerHTML = models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
-        if (models.includes(ollamaModel)) sel.value = ollamaModel;
-      }
-      document.getElementById('ollama-status').innerHTML = '<span style="color:var(--low)">✓ Connected (' + models.length + ' models)</span>';
-    } else {
-      throw new Error('Not OK');
+  const result = await window.OllamaClient.checkConnection({ timeoutMs: 3000 });
+  if (result.ok) {
+    isOllamaAvailable = true;
+    const models = result.models;
+    const sel = document.getElementById('ollama-model');
+    if (models.length > 0) {
+      sel.innerHTML = models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+      if (models.includes(ollamaModel)) sel.value = ollamaModel;
     }
-  } catch(e) {
+    document.getElementById('ollama-status').innerHTML = '<span style="color:var(--low)">✓ Connected (' + models.length + ' models)</span>';
+  } else {
     isOllamaAvailable = false;
     document.getElementById('ollama-status').innerHTML = '<span style="color:var(--critical)">✗ Not available</span>';
   }
@@ -3389,23 +3426,9 @@ async function checkOllama() {
 function openAIDebug(hostname, os, tool, consoleSays, endpointShows, mismatchField, severity) {
   currentDebugContext = { hostname, os, tool, consoleSays, endpointShows, mismatchField, severity };
 
-  // Build context for LLM
-  const prompt = 'You are a senior Windows systems and security engineer. You\'re debugging an endpoint health mismatch between what the management console reports and what the endpoint actually shows. Be specific, give exact PowerShell commands and step-by-step troubleshooting.\n\n' +
-    'Hostname: ' + hostname + '\n' +
-    'OS: ' + os + '\n\n' +
-    'MISMATCH:\n' +
-    'Tool: ' + tool + '\n' +
-    'Console reports: ' + consoleSays + '\n' +
-    'Endpoint reports: ' + endpointShows + '\n' +
-    'Mismatch field: ' + mismatchField + '\n' +
-    'Severity: ' + severity + '\n\n' +
-    'Possible causes:\n' +
-    '- SCCM deployment failed or pending reboot\n' +
-    '- Update policy not applied to this host group\n' +
-    '- GPO or local policy blocking updates\n' +
-    '- Network connectivity issue preventing check-in\n' +
-    '- Service crash or hung process\n\n' +
-    'What is the likely root cause and how do I fix it? Give exact commands.';
+  // Build context for LLM using shared prompts
+  const promptData = window.Prompts.DEBUG_MISMATCH({ hostname, os, tool, consoleSays, endpointShows, mismatchField, severity });
+  const prompt = promptData.system;
 
   lastDebugPrompt = prompt;
 
@@ -3472,26 +3495,14 @@ async function sendToOllama(prompt) {
   chatBody.scrollTop = chatBody.scrollHeight;
 
   try {
-    const resp = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: ollamaModel,
-        prompt: prompt,
-        stream: false,
-        options: { temperature: 0.7, num_predict: 1024 }
-      }),
-      signal: AbortSignal.timeout(60000)
+    const response = await window.OllamaClient.generateCompletion(prompt, {
+      model: ollamaModel,
+      options: { temperature: 0.7, num_predict: 1024 }
     });
 
     // Remove typing indicator
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
-
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-
-    const data = await resp.json();
-    const response = data.response || 'No response from model.';
 
     // Format response with code blocks
     const formatted = formatLLMResponse(response);
@@ -3687,6 +3698,152 @@ function verifyPendingRemediations() {
     localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify({action: 'verified', count: pending.length, at: now}));
     return pending.length;
   } catch(e) { return 0; }
+}
+
+// ===== EVIDENCE RETENTION (Append-Only History) =====
+const CHECK_HISTORY_WINDOW_DAYS = 180;
+
+function getCheckHistory() {
+  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_CHECK_HISTORY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function appendCheckHistory(asset, checks) {
+  const history = getCheckHistory();
+  const now = new Date().toISOString();
+  checks.forEach(c => {
+    history.push({
+      asset: asset,
+      checkName: c.name,
+      checkedAt: now,
+      expected: c.expected,
+      actual: c.actual,
+      result: c.result
+    });
+  });
+  localStorage.setItem(KEYS.VALIDATOR_CHECK_HISTORY, JSON.stringify(history));
+  pruneCheckHistory();
+  return history;
+}
+
+function pruneCheckHistory() {
+  const history = getCheckHistory();
+  const cutoff = Date.now() - (CHECK_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const pruned = history.filter(h => new Date(h.checkedAt).getTime() > cutoff);
+  if (pruned.length !== history.length) {
+    localStorage.setItem(KEYS.VALIDATOR_CHECK_HISTORY, JSON.stringify(pruned));
+  }
+}
+
+// Check history for a specific asset+check
+function getAssetCheckHistory(asset, checkName) {
+  const history = getCheckHistory();
+  return history
+    .filter(h => h.asset === asset && h.checkName === checkName)
+    .sort((a, b) => new Date(a.checkedAt) - new Date(b.checkedAt));
+}
+
+// Derived metric: continuous non-compliance duration
+function getNonComplianceDuration(asset, checkName) {
+  const entries = getAssetCheckHistory(asset, checkName);
+  if (entries.length === 0) return 0;
+  // Walk backwards to find the streak
+  let streak = 0;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].result !== 'pass') streak++;
+    else break;
+  }
+  return streak;
+}
+
+// Derived metric: flap detection — changed state 3+ times in 30 days
+function detectFlapping(asset, checkName) {
+  const entries = getAssetCheckHistory(asset, checkName);
+  if (entries.length < 3) return false;
+  const recent = entries.filter(e => {
+    const daysAgo = (Date.now() - new Date(e.checkedAt).getTime()) / (24*60*60*1000);
+    return daysAgo <= 30;
+  });
+  if (recent.length < 3) return false;
+  let stateChanges = 0;
+  let prevResult = recent[0].result;
+  for (let i = 1; i < recent.length; i++) {
+    if (recent[i].result !== prevResult) {
+      stateChanges++;
+      prevResult = recent[i].result;
+    }
+  }
+  return stateChanges >= 3;
+}
+
+// Render compliance sparkline (small inline bar, last 10 checks)
+function renderComplianceSparkline(asset, checkName) {
+  const entries = getAssetCheckHistory(asset, checkName);
+  if (entries.length === 0) return '<span style="font-size:10px;color:var(--text-muted)">No history</span>';
+  const last10 = entries.slice(-10);
+  const barHeight = 14;
+  let html = '<div style="display:flex;align-items:flex-end;gap:1px;height:'+(barHeight+4)+'px">';
+  last10.forEach((e, idx) => {
+    const color = e.result==='pass'?'var(--low)':e.result==='fail'?'var(--critical)':'var(--medium)';
+    const h = e.result==='pass'?barHeight:e.result==='fail'?barHeight*0.4:barHeight*0.7;
+    const date = new Date(e.checkedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    html += '<span class="sparkline-bar '+e.result+'" style="height:'+h+'px;background:'+color+'" title="'+date+': '+e.result.toUpperCase()+' ('+e.actual+')"></span>';
+  });
+  html += '</div>';
+  return html;
+}
+
+// Get the sparkline summary info for all checks on an asset
+function getAssetSparklineData(asset) {
+  const checks = TOOLS.map(t => ({name: t.name}));
+  return checks.map(c => {
+    const hist = getAssetCheckHistory(asset, c.name);
+    const nonCompDays = getNonComplianceDuration(asset, c.name);
+    const isFlapping = detectFlapping(asset, c.name);
+    return { name: c.name, historyCount: hist.length, nonCompDays, isFlapping, sparkline: renderComplianceSparkline(asset, c.name) };
+  });
+}
+
+// Export evidence as CSV
+function exportEvidenceCSV(hostname) {
+  const history = getCheckHistory();
+  const assetHistory = history
+    .filter(h => h.asset === hostname)
+    .sort((a, b) => new Date(b.checkedAt) - new Date(a.checkedAt));
+  if (assetHistory.length === 0) { showToast('No evidence history for this asset'); return; }
+  const header = 'Asset,Check,Timestamp,Expected,Actual,Result\n';
+  const rows = assetHistory.map(h =>
+    '"' + h.asset + '","' + h.checkName + '","' + h.checkedAt + '","' + h.expected + '","' + h.actual + '","' + h.result + '"'
+  ).join('\n');
+  const csv = header + rows;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const aEl = document.createElement('a');
+  aEl.href = URL.createObjectURL(blob);
+  aEl.download = hostname + '_evidence_' + new Date().toISOString().slice(0,10) + '.csv';
+  aEl.click();
+  showToast('Exported ' + assetHistory.length + ' evidence records for ' + hostname);
+}
+
+// Run a health check on the current detail asset and record evidence
+function runHealthCheckOnAsset() {
+  if (!detailAsset) return;
+  const a = assets.find(x => x.hostname === detailAsset.hostname);
+  if (!a) return;
+  // Simulate new checks (some may change state)
+  const newChecks = genChecks();
+  a.checks = newChecks;
+  a.last = ago(0);
+  a.passed = newChecks.filter(c => c.result === 'pass').length;
+  a.total = newChecks.length;
+  a.health = assetHealth(newChecks);
+  a.compare = genCompare(newChecks);
+  // Append to evidence history
+  appendCheckHistory(a.hostname, newChecks);
+  // Also re-verify pending remediations
+  const v = verifyPendingRemediations();
+  // Re-render detail
+  showDetail(a.hostname);
+  showToast('⚡ Health check complete for ' + a.hostname + (v > 0 ? ' — ' + v + ' remediation(s) verified' : ''));
 }
 // ===== EOL DATABASE =====
 const EOL_DB = [
