@@ -4523,6 +4523,27 @@ updateLifecycleBadge();
 
 // Check Ollama availability (non-blocking)
 checkOllama();
+// ════ URL PARAM FILTER SUPPORT ════
+(function applyURLParams() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const hostname = params.get('hostname');
+    if (hostname) {
+      // Convert to hash-based routing for deep linking
+      const a = assets.find(x => x.hostname === hostname);
+      if (a) {
+        setTimeout(() => showDetail(hostname), 300);
+      } else {
+        // Pre-fill asset search
+        setTimeout(() => {
+          showPage('assets');
+          const searchEl = document.getElementById('asset-search');
+          if (searchEl) { searchEl.value = hostname; renderAssets(); }
+        }, 300);
+      }
+    }
+  } catch(e) {}
+})();
 </script>
 
 </body>
