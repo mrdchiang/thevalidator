@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:11434;">
 <title>TheValidator — Endpoint Health Checker</title>
 <style>
 /* ===== DESIGN TOKENS (AmpShield) ===== */
@@ -540,6 +540,70 @@ tbody tr:last-child td{border-bottom:none}
 .tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* ===== CONSOLE VS ENDPOINT ===== */
+.console-import-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.console-import-bar .drop-zone-console{border:2px dashed var(--border-light);border-radius:var(--radius);padding:12px 20px;cursor:pointer;transition:all .2s;background:var(--bg-elevated);font-size:13px;color:var(--text-secondary)}
+.console-import-bar .drop-zone-console:hover,.console-import-bar .drop-zone-console.drag-over{border-color:var(--accent);background:var(--accent-glow)}
+
+.console-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.console-stat{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;text-align:center}
+.console-stat .stat-num{font-size:28px;font-weight:700}
+.console-stat .stat-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.console-stat.match .stat-num{color:var(--low)}
+.console-stat.mismatch .stat-num{color:var(--critical)}
+
+.mismatch-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;transition:background .15s}
+.mismatch-row:hover{background:var(--bg-hover)}
+.mismatch-row:last-child{border-bottom:none}
+.mismatch-row .mm-host{font-weight:600;color:var(--text-primary);min-width:110px}
+.mismatch-row .mm-tool{color:var(--text-secondary);min-width:160px}
+.mismatch-row .mm-console{color:var(--low);font-size:12px;min-width:140px}
+.mismatch-row .mm-arrow{color:var(--text-muted)}
+.mismatch-row .mm-endpoint{color:var(--critical);font-size:12px;min-width:140px}
+.mismatch-row .mm-field{font-size:11px;color:var(--high);min-width:80px}
+.mismatch-row .mm-sev{min-width:60px}
+.mismatch-row .mm-actions{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+
+.remediation-suggestion{padding:8px 12px;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);margin-bottom:8px}
+.remediation-suggestion code{background:var(--bg-root);padding:3px 8px;border-radius:3px;font-size:11px;display:block;margin-top:4px;color:var(--accent);word-break:break-all}
+
+/* ===== CONSOLE EXPORT CSV PREVIEW ===== */
+.csv-preview{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.csv-preview table{font-size:11px}
+.csv-preview thead th{background:var(--bg-elevated)}
+
+/* ===== LLM DEBUG CHAT PANEL ===== */
+.chat-panel-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9998;display:none}
+.chat-panel-overlay.open{display:block}
+.chat-panel{position:fixed;top:0;right:-420px;width:420px;height:100vh;background:var(--bg-surface);border-left:1px solid var(--border);z-index:9999;display:flex;flex-direction:column;transition:right .3s ease;box-shadow:-4px 0 24px rgba(0,0,0,0.5)}
+.chat-panel.open{right:0}
+.chat-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);min-height:56px}
+.chat-panel-header h3{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.chat-panel-close{background:none;border:1px solid var(--border);color:var(--text-secondary);padding:4px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;transition:all .15s}
+.chat-panel-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.chat-panel-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.chat-bubble{max-width:90%;padding:10px 14px;border-radius:var(--radius);font-size:13px;line-height:1.5;word-break:break-word}
+.chat-bubble.system{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);align-self:flex-start;font-size:12px}
+.chat-bubble.user{background:var(--accent-glow);border:1px solid var(--accent-dim);color:var(--text-primary);align-self:flex-end}
+.chat-bubble.assistant{background:var(--bg-elevated);border:1px solid var(--border-light);color:var(--text-primary);align-self:flex-start}
+.chat-bubble.assistant pre{background:var(--bg-root);padding:8px 12px;border-radius:var(--radius-sm);font-size:11px;overflow-x:auto;margin:6px 0;border:1px solid var(--border)}
+.chat-bubble.assistant code{font-family:'SF Mono','Fira Code',monospace;font-size:11px}
+.chat-bubble.assistant .copy-btn{display:inline-block;margin-top:6px;font-size:11px;cursor:pointer;color:var(--accent);background:none;border:none;text-decoration:underline}
+.chat-bubble .bubble-meta{font-size:10px;color:var(--text-muted);margin-top:4px}
+.chat-panel-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.chat-panel-footer .chat-input{width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text-primary);font-size:13px;resize:none;outline:none;font-family:inherit;min-height:40px;max-height:100px}
+.chat-panel-footer .chat-input:focus{border-color:var(--accent)}
+.chat-panel-footer .chat-actions{display:flex;gap:8px;justify-content:flex-end}
+.typing-indicator{display:flex;align-items:center;gap:4px;padding:8px 14px;align-self:flex-start}
+.typing-indicator span{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:typing-bounce 1.2s infinite ease-in-out}
+.typing-indicator span:nth-child(2){animation-delay:.2s}
+.typing-indicator span:nth-child(3){animation-delay:.4s}
+@keyframes typing-bounce{0%,80%,100%{transform:scale(0.6);opacity:.5}40%{transform:scale(1);opacity:1}}
+
+.ollama-config{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);padding:6px 0}
+.ollama-config select{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-secondary);font-size:12px;padding:3px 8px;outline:none}
+.ollama-config select:focus{border-color:var(--accent)}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:768px){
   .sidebar{width:60px;min-width:60px}
@@ -587,6 +651,12 @@ tbody tr:last-child td{border-bottom:none}
     </button>
     <button class="nav-item" data-page="cis">
       <span class="icon">🏛️</span><span>CIS Compliance</span>
+    </button>
+    <div class="nav-separator"></div>
+    <div class="nav-section-label">Endpoint Health</div>
+    <button class="nav-item" data-page="console-endpoint">
+      <span class="icon">🔍</span><span>Console vs Endpoint</span>
+      <span class="badge" id="mismatch-badge" style="display:none">0</span>
     </button>
   </nav>
   <div class="sidebar-footer">
@@ -959,6 +1029,71 @@ tbody tr:last-child td{border-bottom:none}
           <table><thead><tr>
             <th>CIS Ref</th><th>Control Name</th><th>Benchmark</th><th>Category</th><th>Expected</th><th>GPO Setting</th><th>Current</th><th>Status</th>
           </tr></thead><tbody id="cis-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- CONSOLE VS ENDPOINT PAGE       -->
+    <!-- ============================== -->
+    <div class="page" id="page-console-endpoint">
+      <div class="card">
+        <div class="card-header">
+          <h3>📥 Import Console Export</h3>
+          <span style="font-size:12px;color:var(--text-muted)">Simulates pulling from SCCM / Tenable / CrowdStrike consoles</span>
+        </div>
+        <div class="card-body">
+          <div class="console-import-bar">
+            <div class="drop-zone-console" id="console-drop-zone" onclick="document.getElementById('console-file-input').click()">
+              📂 Drop Console Export CSV here or click to browse
+            </div>
+            <input type="file" id="console-file-input" accept=".csv" style="display:none" onchange="handleConsoleCSV(this.files[0])">
+            <button class="btn btn-primary" onclick="loadDemoConsoleData()">🎲 Load Demo Console Data</button>
+            <button class="btn" onclick="clearConsoleData()">🗑️ Clear</button>
+          </div>
+          <div id="console-import-result"></div>
+        </div>
+      </div>
+
+      <div id="console-comparison-content">
+        <div style="color:var(--text-muted);padding:40px;text-align:center;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg)">
+          <div style="font-size:48px;margin-bottom:12px">🔍</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:6px">No console data loaded</div>
+          <div style="font-size:13px">Import a console export CSV or load demo data to compare console-reported state against endpoint reality.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LLM DEBUG CHAT PANEL ===== -->
+    <div class="chat-panel-overlay" id="chat-overlay" onclick="closeChatPanel()"></div>
+    <div class="chat-panel" id="chat-panel">
+      <div class="chat-panel-header">
+        <h3>🪄 AI Debug Assistant</h3>
+        <button class="chat-panel-close" onclick="closeChatPanel()">✕ Close</button>
+      </div>
+      <div class="chat-panel-body" id="chat-body">
+        <div class="chat-bubble system">
+          <strong>🤖 LLM Debug Mode</strong><br>
+          I analyze endpoint health mismatches and suggest root causes and fixes. Select a mismatch and click "🪄 AI Debug" to get started.
+          <div class="ollama-config">
+            <span>Model:</span>
+            <select id="ollama-model" onchange="ollamaModel=this.value">
+              <option value="llama3.2">llama3.2</option>
+              <option value="llama3.1:8b">llama3.1:8b</option>
+              <option value="mistral">mistral</option>
+              <option value="codellama">codellama</option>
+              <option value="phi3:mini">phi3:mini</option>
+              <option value="deepseek-coder-v2">deepseek-coder-v2</option>
+            </select>
+            <span id="ollama-status" style="color:var(--text-muted)">Checking...</span>
+          </div>
+        </div>
+      </div>
+      <div class="chat-panel-footer">
+        <textarea class="chat-input" id="chat-input" placeholder="Ask a follow-up question..." rows="2" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage()}"></textarea>
+        <div class="chat-actions">
+          <button class="btn btn-sm btn-ghost" onclick="retryLastPrompt()" id="retry-btn" style="display:none">🔄 Try Another Approach</button>
+          <button class="btn btn-sm btn-primary" onclick="sendChatMessage()" id="send-btn">Send</button>
         </div>
       </div>
     </div>
@@ -2548,7 +2683,7 @@ function showPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   if(pg){pg.classList.add('active');const navEl=document.querySelector('.nav-item[data-page="'+name+'"]');if(navEl)navEl.classList.add('active')}
-  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',software:'Software Versions',detail:'Asset Detail','gpo-baseline':'GPO Baseline & Drift',cis:'CIS Benchmark Compliance'};
+  const titles={dashboard:'Dashboard',assets:'Assets',issues:'Issues',history:'History',software:'Software Versions',detail:'Asset Detail','gpo-baseline':'GPO Baseline & Drift',cis:'CIS Benchmark Compliance','console-endpoint':'Console vs Endpoint Comparison'};
   document.getElementById('page-title').textContent=titles[name]||'Dashboard';
   if(name==='dashboard') renderDashboard();
   if(name==='assets') renderAssets();
@@ -2557,6 +2692,7 @@ function showPage(name){
   if(name==='software') renderSoftware();
   if(name==='gpo-baseline') renderGPOBaseline();
   if(name==='cis') renderCISPage();
+  if(name==='console-endpoint') renderConsoleComparison();
 }
 
 // ===== DEEP LINK ROUTING =====
@@ -2568,7 +2704,7 @@ function handleHash(){
     const a=assets.find(x=>x.hostname===decodeURIComponent(param));
     if(a){showDetail(decodeURIComponent(param));return}
   }
-  if(['dashboard','assets','issues','history','software','gpo-baseline','cis'].includes(page)){
+  if(['dashboard','assets','issues','history','software','gpo-baseline','cis','console-endpoint'].includes(page)){
     showPage(page);
   } else {
     showPage('dashboard');
@@ -2606,7 +2742,672 @@ function updateClock(){
 }
 setInterval(updateClock,10000);updateClock();
 
-// ===== CROSS-TOOL BRIDGE (localStorage) =====
+// ===== CONSOLE VS ENDPOINT COMPARISON ENGINE =====
+const CONSOLE_TOOLS = [
+  'CrowdStrike Falcon Sensor',
+  'Windows Defender',
+  'Tenable Agent',
+  'Zscaler Client',
+  'SCCM Client',
+  'BitLocker',
+  'OS Patch Level',
+  'LAPS',
+  'Duo/MFA Agent'
+];
+
+let consoleEndpointData = []; // {hostname, checks:[{tool,consoleSays,endpointShows,match,mismatchField,severity}]}
+
+// Generate realistic console vs endpoint data with ~20% mismatch rate
+function generateConsoleDemoData() {
+  const hosts = assets.slice(0, 15).map(a => ({
+    hostname: a.hostname,
+    os: a.os,
+    ip: a.ip
+  }));
+
+  const results = hosts.map(h => {
+    const checks = [];
+    CONSOLE_TOOLS.forEach(tool => {
+      const roll = Math.random();
+      const match = roll > 0.22; // ~22% mismatch rate
+
+      let consoleSays, endpointShows, mismatchField = null, severity = null;
+
+      switch (tool) {
+        case 'CrowdStrike Falcon Sensor':
+          if (match) {
+            const v = pick(['v7.5.1','v7.5.0','v7.4.3']);
+            consoleSays = v + ' — Running — Policy: Standard';
+            endpointShows = v + ' — Running — Policy: Standard';
+          } else {
+            consoleSays = 'v7.5.1 — Running — Policy: Standard';
+            if (roll < 0.10) { endpointShows = 'v7.2.1 — Running — Policy: Standard'; mismatchField = 'Version'; severity = 'High'; }
+            else if (roll < 0.16) { endpointShows = 'v7.5.1 — Stopped — Policy: Standard'; mismatchField = 'Running State'; severity = 'Critical'; }
+            else { endpointShows = 'v7.5.1 — Running — Policy: Legacy'; mismatchField = 'Policy Group'; severity = 'Medium'; }
+          }
+          break;
+        case 'Windows Defender':
+          if (match) {
+            const def = 'Running — Definitions: ' + ago(randInt(0,2)).slice(0,10);
+            consoleSays = def; endpointShows = def;
+          } else {
+            consoleSays = 'Running — Definitions: 2026-07-24';
+            if (roll < 0.10) { endpointShows = 'Running — Definitions: 2026-07-10'; mismatchField = 'Definition Age'; severity = 'Medium'; }
+            else if (roll < 0.16) { endpointShows = 'Stopped — Definitions: 2026-07-24'; mismatchField = 'Running State'; severity = 'Critical'; }
+            else { endpointShows = 'Running — Definitions: Unknown'; mismatchField = 'Definition State'; severity = 'Low'; }
+          }
+          break;
+        case 'Tenable Agent':
+          if (match) {
+            const v = pick(['v6.5.1','v6.5.0','v6.4.3']);
+            consoleSays = v + ' — Linked';
+            endpointShows = v + ' — Linked';
+          } else {
+            consoleSays = 'v6.5.1 — Linked';
+            if (roll < 0.10) { endpointShows = 'v6.3.2 — Linked'; mismatchField = 'Version'; severity = 'High'; }
+            else if (roll < 0.16) { endpointShows = 'v6.5.1 — Unlinked'; mismatchField = 'Linked Status'; severity = 'Critical'; }
+            else { endpointShows = 'Not Installed'; mismatchField = 'Installed'; severity = 'Critical'; }
+          }
+          break;
+        case 'Zscaler Client':
+          if (match) {
+            const v = pick(['v4.5.1','v4.5.0']);
+            consoleSays = v + ' — Tunnel Up — Connected';
+            endpointShows = v + ' — Tunnel Up — Connected';
+          } else {
+            consoleSays = 'v4.5.1 — Tunnel Up — Connected';
+            if (roll < 0.12) { endpointShows = 'v4.3.0 — Tunnel Up — Connected'; mismatchField = 'Version'; severity = 'Medium'; }
+            else if (roll < 0.18) { endpointShows = 'v4.5.1 — Tunnel Down — Disconnected'; mismatchField = 'Tunnel Status'; severity = 'High'; }
+            else { endpointShows = 'Not Installed'; mismatchField = 'Installed'; severity = 'Critical'; }
+          }
+          break;
+        case 'SCCM Client':
+          if (match) {
+            consoleSays = 'v5.0.9096.1000 — Site: NYC — Last Policy: ' + ago(randInt(0,1)).slice(0,10);
+            endpointShows = consoleSays;
+          } else {
+            consoleSays = 'v5.0.9096.1000 — Site: NYC — Last Policy: 2026-07-24';
+            if (roll < 0.10) { endpointShows = 'v5.0.9040.1000 — Site: NYC — Last Policy: 2026-07-24'; mismatchField = 'Version'; severity = 'Medium'; }
+            else if (roll < 0.17) { endpointShows = 'v5.0.9096.1000 — Site: NYC — Last Policy: 2026-06-15'; mismatchField = 'Last Policy Refresh'; severity = 'High'; }
+            else { endpointShows = 'v5.0.9096.1000 — Site: ORPHAN — Last Policy: Never'; mismatchField = 'Site Code'; severity = 'Critical'; }
+          }
+          break;
+        case 'BitLocker':
+          if (match) {
+            consoleSays = 'Protected — XTS-AES 256';
+            endpointShows = consoleSays;
+          } else {
+            consoleSays = 'Protected — XTS-AES 256';
+            if (roll < 0.10) { endpointShows = 'Protected — XTS-AES 128'; mismatchField = 'Encryption Method'; severity = 'Medium'; }
+            else if (roll < 0.16) { endpointShows = 'Suspended — C:'; mismatchField = 'Protection Status'; severity = 'High'; }
+            else { endpointShows = 'Not Encrypted'; mismatchField = 'Encryption Status'; severity = 'Critical'; }
+          }
+          break;
+        case 'OS Patch Level':
+          if (match) {
+            const kb = 'KB5053598 (Jul 2026)';
+            consoleSays = kb; endpointShows = kb;
+          } else {
+            consoleSays = 'KB5053598 (Jul 2026)';
+            if (roll < 0.12) { endpointShows = 'KB5048230 (Jun 2026)'; mismatchField = 'Latest KB'; severity = 'High'; }
+            else { endpointShows = 'KB5039211 (May 2026) — Missing 3 Critical'; mismatchField = 'Patch Level'; severity = 'Critical'; }
+          }
+          break;
+        case 'LAPS':
+          if (match) {
+            consoleSays = 'Installed — Configured — Managed';
+            endpointShows = consoleSays;
+          } else {
+            consoleSays = 'Installed — Configured — Managed';
+            if (roll < 0.14) { endpointShows = 'Not Installed'; mismatchField = 'Installed'; severity = 'High'; }
+            else { endpointShows = 'Installed — Not Configured'; mismatchField = 'Configured'; severity = 'High'; }
+          }
+          break;
+        case 'Duo/MFA Agent':
+          if (match) {
+            const v = pick(['v5.2.1','v5.2.0']);
+            consoleSays = v + ' — Enrolled';
+            endpointShows = v + ' — Enrolled';
+          } else {
+            consoleSays = 'v5.2.1 — Enrolled';
+            if (roll < 0.10) { endpointShows = 'v5.0.3 — Enrolled'; mismatchField = 'Version'; severity = 'Medium'; }
+            else if (roll < 0.16) { endpointShows = 'v5.2.1 — Not Enrolled'; mismatchField = 'Enrollment'; severity = 'High'; }
+            else { endpointShows = 'Not Installed'; mismatchField = 'Installed'; severity = 'Critical'; }
+          }
+          break;
+      }
+      checks.push({ tool, consoleSays, endpointShows, match, mismatchField, severity });
+    });
+    return { hostname: h.hostname, os: h.os, ip: h.ip, checks };
+  });
+
+  return results;
+}
+
+// Mismatch Remediation Map
+const REMEDIATION_MAP = {
+  'CrowdStrike Falcon Sensor': {
+    'Version': { suggestion: 'Sensor version behind console-reported version — likely SCCM deployment failed or pending reboot.', cmd: 'Update-CrowdStrikeSensor -PolicyName Standard', action: 'ps' },
+    'Running State': { suggestion: 'CrowdStrike service is not running on endpoint.', cmd: 'Start-Service CSFalconService; Get-Service CSFalconService', action: 'ps' },
+    'Policy Group': { suggestion: 'Policy group assignment mismatch — sensor may not have received updated policy.', cmd: 'Update-CrowdStrikeSensor -PolicyName Standard -Force', action: 'ps' }
+  },
+  'Windows Defender': {
+    'Definition Age': { suggestion: 'Definitions are stale — Windows Update or SCCM SUP may be blocked.', cmd: 'Update-MpSignature -UpdateSource MicrosoftUpdateServer', action: 'ps' },
+    'Running State': { suggestion: 'Windows Defender real-time protection is stopped.', cmd: 'Set-MpPreference -DisableRealtimeMonitoring $false; Start-Service WinDefend', action: 'ps' },
+    'Definition State': { suggestion: 'Definition state unknown — possible corruption of signature database.', cmd: '& "C:\\Program Files\\Windows Defender\\MpCmdRun.exe" -removedefinitions -dynamicsignatures; & "C:\\Program Files\\Windows Defender\\MpCmdRun.exe" -signatureupdate', action: 'ps' }
+  },
+  'Tenable Agent': {
+    'Version': { suggestion: 'Tenable agent version is behind — needs redeployment.', cmd: 'msiexec /i Tenable-Nessus-Agent-x64.msi /qn NESSUS_GROUPS="All" NESSUS_SERVER="nessus.corp.local:8834"', action: 'installer' },
+    'Linked Status': { suggestion: 'Agent is unlinked from Tenable console — reinstall with linking key required.', cmd: 'nessuscli agent link --key=YOUR_LINKING_KEY --host=nessus.corp.local --port=8834', action: 'cli' },
+    'Installed': { suggestion: 'Tenable agent not installed — deploy via SCCM or GPO software install.', cmd: 'msiexec /i Tenable-Nessus-Agent-x64.msi /qn NESSUS_GROUPS="All" NESSUS_SERVER="nessus.corp.local:8834"', action: 'installer' }
+  },
+  'Zscaler Client': {
+    'Version': { suggestion: 'Zscaler client version outdated — push updated package.', cmd: 'msiexec /i Zscaler-Client-Connector.msi /qn', action: 'installer' },
+    'Tunnel Status': { suggestion: 'Zscaler tunnel is down — may have connectivity or authentication issues.', cmd: 'Restart-Service ZSAService; & "C:\\Program Files\\Zscaler\\ZSATunnel.exe" --reconnect', action: 'ps' },
+    'Installed': { suggestion: 'Zscaler client not installed on this endpoint.', cmd: 'msiexec /i Zscaler-Client-Connector.msi /qn CLOUDNAME=zscaler', action: 'installer' }
+  },
+  'SCCM Client': {
+    'Version': { suggestion: 'SCCM client version behind — client push or AD system discovery may be failing.', cmd: 'Start-Service CcmExec; & "C:\\Windows\\CCM\\ccmrepair.exe"', action: 'ps' },
+    'Last Policy Refresh': { suggestion: 'SCCM client policy is stale — force policy retrieval.', cmd: 'Invoke-WmiMethod -Class SMS_Client -Name TriggerSchedule -ArgumentList "{00000000-0000-0000-0000-000000000021}" -Namespace root\\ccm', action: 'ps' },
+    'Site Code': { suggestion: 'SCCM client site code mismatch — may point to wrong or orphaned site.', cmd: '& "C:\\Windows\\CCM\\ClientSDK\\bin\\ccmsetup.exe" /mp:SMS-MP.corp.local SMSSITECODE=NYC', action: 'ps' }
+  },
+  'BitLocker': {
+    'Encryption Method': { suggestion: 'Encryption method weaker than policy — re-encrypt with stronger cipher.', cmd: 'manage-bde -off C:; manage-bde -on C: -EncryptionMethod XtsAes256', action: 'ps' },
+    'Protection Status': { suggestion: 'BitLocker protection suspended — resume immediately to restore full encryption.', cmd: 'Resume-BitLocker -MountPoint C:', action: 'ps' },
+    'Encryption Status': { suggestion: 'Drive is not encrypted — enable BitLocker with TPM+PIN.', cmd: 'Enable-BitLocker -MountPoint C: -TpmProtector -Pin -SkipHardwareTest', action: 'ps' }
+  },
+  'OS Patch Level': {
+    'Latest KB': { suggestion: 'OS patch is behind — missing critical KB.', cmd: 'Install-WindowsUpdate -KBArticleID KB5053598 -AcceptAll', action: 'ps' },
+    'Patch Level': { suggestion: 'Multiple critical patches missing — run full Windows Update.', cmd: 'Install-WindowsUpdate -AcceptAll -AutoReboot; Get-WindowsUpdateLog', action: 'ps' }
+  },
+  'LAPS': {
+    'Installed': { suggestion: 'LAPS not installed — deploy via GPO or SCCM.', cmd: 'Add-WindowsCapability -Online -Name LAPS~~~~0.0.1.0', action: 'ps' },
+    'Configured': { suggestion: 'LAPS installed but not configured — configure via GPO.', cmd: 'Update-LapsADSchema; Set-LapsPolicy -ADBackupDirectory "\\\\corp-dc-01\\LAPS" -PassphraseLength 14', action: 'ps' }
+  },
+  'Duo/MFA Agent': {
+    'Version': { suggestion: 'Duo/MFA agent version outdated.', cmd: 'msiexec /i DuoWindowsLogon-x64.msi /qn IKEY=YOUR_IKEY SKEY=YOUR_SKEY HOST=api-YOURHOST.duosecurity.com', action: 'installer' },
+    'Enrollment': { suggestion: 'Agent installed but not enrolled — re-register required.', cmd: '& "C:\\Program Files\\Duo Security\\DuoCredProv\\DuoCredProv.exe" -register', action: 'ps' },
+    'Installed': { suggestion: 'Duo/MFA agent not installed on this endpoint.', cmd: 'msiexec /i DuoWindowsLogon-x64.msi /qn IKEY=YOUR_IKEY SKEY=YOUR_SKEY HOST=api-YOURHOST.duosecurity.com', action: 'installer' }
+  }
+};
+
+// Also handle GPO drift
+const DRIFT_REMEDIATION = {
+  'Password Policy — Min Length': { suggestion: 'GPO password length setting drifted — policy may not have applied.', cmd: 'gpupdate /force /target:computer', action: 'ps' },
+  'Password Policy — Complexity': { suggestion: 'Password complexity GPO drifted.', cmd: 'gpupdate /force /target:computer', action: 'ps' },
+  'Account Lockout — Threshold': { suggestion: 'Account lockout threshold GPO drifted.', cmd: 'gpupdate /force /target:computer', action: 'ps' },
+  'Audit — Logon Events': { suggestion: 'Audit logon events GPO drifted.', cmd: 'gpupdate /force /target:computer; auditpol /set /subcategory:"Logon" /success:enable /failure:enable', action: 'ps' },
+  'Audit — Account Management': { suggestion: 'Audit account management GPO drifted.', cmd: 'gpupdate /force /target:computer; auditpol /set /subcategory:"User Account Management" /success:enable /failure:enable', action: 'ps' },
+  'Windows Firewall — Domain': { suggestion: 'Windows Firewall domain profile GPO drifted.', cmd: 'gpupdate /force /target:computer; netsh advfirewall set domainprofile firewallpolicy blockinbound,allowoutbound', action: 'ps' },
+  'Windows Defender — Real-time': { suggestion: 'Windows Defender real-time GPO drifted.', cmd: 'gpupdate /force /target:computer; Set-MpPreference -DisableRealtimeMonitoring $false', action: 'ps' },
+  'BitLocker — OS Drive': { suggestion: 'BitLocker OS drive GPO drifted.', cmd: 'gpupdate /force /target:computer; manage-bde -protectors -add C: -tpm', action: 'ps' },
+  'UAC — Admin Approval': { suggestion: 'UAC Admin Approval GPO drifted.', cmd: 'gpupdate /force /target:computer; Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" -Name EnableLUA -Value 1', action: 'ps' },
+  'Remote Desktop — Network Level Auth': { suggestion: 'RDP NLA GPO drifted.', cmd: 'gpupdate /force /target:computer; Set-ItemProperty -Path "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp" -Name UserAuthentication -Value 1', action: 'ps' },
+  'PowerShell — Script Block Logging': { suggestion: 'PowerShell script block logging GPO drifted.', cmd: 'gpupdate /force /target:computer; Set-ItemProperty -Path "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging" -Name EnableScriptBlockLogging -Value 1', action: 'ps' },
+  'LAPS — Local Admin Password': { suggestion: 'LAPS local admin password GPO drifted.', cmd: 'gpupdate /force /target:computer; Set-LapsPolicy -ADBackupDirectory "\\\\corp-dc-01\\LAPS"', action: 'ps' }
+};
+
+function getRemediation(tool, mismatchField, policyName) {
+  if (policyName && DRIFT_REMEDIATION[policyName]) {
+    return DRIFT_REMEDIATION[policyName];
+  }
+  if (REMEDIATION_MAP[tool] && REMEDIATION_MAP[tool][mismatchField]) {
+    return REMEDIATION_MAP[tool][mismatchField];
+  }
+  return {
+    suggestion: 'Manual investigation required for this mismatch.',
+    cmd: 'Write-Host "Manual investigation needed for: ' + tool + ' — ' + (mismatchField || 'unknown') + '"',
+    action: 'ps'
+  };
+}
+
+function loadDemoConsoleData() {
+  consoleEndpointData = generateConsoleDemoData();
+  showToast('✅ Demo console data loaded: ' + consoleEndpointData.length + ' assets with ' + countTotalChecks() + ' checks');
+  renderConsoleComparison();
+}
+
+function clearConsoleData() {
+  consoleEndpointData = [];
+  document.getElementById('console-comparison-content').innerHTML =
+    '<div style="color:var(--text-muted);padding:40px;text-align:center;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg)">' +
+      '<div style="font-size:48px;margin-bottom:12px">🔍</div>' +
+      '<div style="font-size:15px;font-weight:600;margin-bottom:6px">No console data loaded</div>' +
+      '<div style="font-size:13px">Import a console export CSV or load demo data to compare console-reported state against endpoint reality.</div>' +
+    '</div>';
+  updateMismatchBadge();
+}
+
+function countTotalChecks() {
+  return consoleEndpointData.reduce((s, a) => s + a.checks.length, 0);
+}
+
+function countMismatches() {
+  let count = 0;
+  consoleEndpointData.forEach(a => a.checks.forEach(c => { if (!c.match) count++; }));
+  return count;
+}
+
+function handleConsoleCSV(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const parsed = parseConsoleCSV(text);
+    if (parsed.length === 0) {
+      alert('Could not parse CSV. Expected columns: Hostname, Tool, Console Value, Endpoint Value, Match, Field, Severity');
+      return;
+    }
+    consoleEndpointData = parsed;
+    showToast('✅ Console export imported: ' + parsed.length + ' assets');
+    renderConsoleComparison();
+  };
+  reader.readAsText(file);
+}
+
+function parseConsoleCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const dataMap = {};
+  for (let i = 1; i < lines.length; i++) {
+    const vals = parseCSVLine(lines[i]);
+    if (vals.length < 4) continue;
+    const hostname = (vals[0] || '').replace(/"/g, '').trim();
+    if (!hostname) continue;
+    if (!dataMap[hostname]) dataMap[hostname] = { hostname, os: vals[7] || 'Unknown', ip: vals[8] || '—', checks: [] };
+    dataMap[hostname].checks.push({
+      tool: (vals[1] || '').replace(/"/g, '').trim(),
+      consoleSays: (vals[2] || '').replace(/"/g, '').trim(),
+      endpointShows: (vals[3] || '').replace(/"/g, '').trim(),
+      match: (vals[4] || 'true').replace(/"/g, '').trim().toLowerCase() === 'true' || vals[4] === '✅',
+      mismatchField: (vals[5] || '').replace(/"/g, '').trim() || null,
+      severity: (vals[6] || 'Medium').replace(/"/g, '').trim() || 'Medium'
+    });
+  }
+  return Object.values(dataMap);
+}
+
+function renderConsoleComparison() {
+  if (consoleEndpointData.length === 0) {
+    clearConsoleData();
+    return;
+  }
+
+  const totalChecks = countTotalChecks();
+  const mismatches = countMismatches();
+  const matchRate = totalChecks > 0 ? Math.round((totalChecks - mismatches) / totalChecks * 100) : 100;
+
+  // Summary stats
+  let html = '<div class="console-summary">' +
+    '<div class="console-stat info"><div class="stat-num" style="color:var(--accent)">' + consoleEndpointData.length + '</div><div class="stat-label">Assets Compared</div></div>' +
+    '<div class="console-stat info"><div class="stat-num" style="color:var(--accent)">' + totalChecks + '</div><div class="stat-label">Total Checks</div></div>' +
+    '<div class="console-stat match"><div class="stat-num">' + (totalChecks - mismatches) + '</div><div class="stat-label">Matching</div></div>' +
+    '<div class="console-stat mismatch"><div class="stat-num">' + mismatches + '</div><div class="stat-label">Mismatches</div></div>' +
+    '<div class="console-stat ' + (matchRate >= 90 ? 'match' : matchRate >= 75 ? '' : 'mismatch') + '"><div class="stat-num">' + matchRate + '%</div><div class="stat-label">Match Rate</div></div>' +
+  '</div>';
+
+  // Per-asset comparison
+  consoleEndpointData.forEach(asset => {
+    const assetMismatches = asset.checks.filter(c => !c.match);
+    html += '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-header">' +
+        '<h3>🖥️ ' + asset.hostname + ' <span style="font-weight:400;font-size:12px;color:var(--text-muted)">' + asset.os + ' — ' + asset.ip + '</span></h3>' +
+        '<span class="badge ' + (assetMismatches.length === 0 ? 'badge-pass' : 'badge-fail') + '">' +
+          assetMismatches.length + ' mismatches / ' + asset.checks.length + ' checks' +
+        '</span>' +
+      '</div>' +
+      '<div class="card-body" style="padding:0">';
+
+    asset.checks.forEach(check => {
+      if (check.match) {
+        html += '<div class="mismatch-row" style="opacity:0.7">' +
+          '<span class="mm-host">' + asset.hostname + '</span>' +
+          '<span class="mm-tool">' + check.tool + '</span>' +
+          '<span class="mm-console">✅ ' + check.consoleSays + '</span>' +
+          '<span class="mm-arrow">=</span>' +
+          '<span class="mm-endpoint" style="color:var(--low)">✅ ' + check.endpointShows + '</span>' +
+          '<span class="badge badge-pass" style="margin-left:auto">Match</span>' +
+        '</div>';
+      } else {
+        const rem = getRemediation(check.tool, check.mismatchField);
+        const sevClass = check.severity === 'Critical' ? 'badge-critical' : check.severity === 'High' ? 'badge-fail' : 'badge-warn';
+        html += '<div class="mismatch-row" style="background:' + (check.severity === 'Critical' ? 'var(--critical-bg)' : check.severity === 'High' ? 'rgba(255,119,34,0.08)' : 'transparent') + '">' +
+          '<span class="mm-host">' + asset.hostname + '</span>' +
+          '<span class="mm-tool">' + check.tool + '</span>' +
+          '<span class="mm-console">' + check.consoleSays + '</span>' +
+          '<span class="mm-arrow">→</span>' +
+          '<span class="mm-endpoint">' + check.endpointShows + '</span>' +
+          '<span class="mm-field">[' + check.mismatchField + ']</span>' +
+          '<span class="mm-sev"><span class="badge ' + sevClass + '">' + check.severity + '</span></span>' +
+          '<div class="mm-actions">' +
+            '<button class="btn btn-xs btn-primary" onclick="event.stopPropagation();pushToRemFlow(\'' + asset.hostname + '\',\'' + check.tool + '\',\'' + (check.mismatchField || '') + '\',\'' + rem.cmd.replace(/'/g,"\\'") + '\')" title="Queue in RemFlow">📤 Push to RemFlow</button>' +
+            '<button class="btn btn-xs" onclick="event.stopPropagation();copyToClipboard(\'' + rem.cmd.replace(/'/g,"\\'") + '\')" title="Copy PowerShell to clipboard">📋 Run Locally</button>' +
+            '<button class="btn btn-xs" style="border-color:var(--accent);color:var(--accent)" onclick="event.stopPropagation();openAIDebug(\'' + asset.hostname + '\',\'' + asset.os + '\',\'' + check.tool + '\',\'' + check.consoleSays.replace(/'/g,"\\'") + '\',\'' + check.endpointShows.replace(/'/g,"\\'") + '\',\'' + (check.mismatchField || '') + '\',\'' + check.severity + '\')">🪄 AI Debug</button>' +
+          '</div>' +
+        '</div>';
+      }
+    });
+
+    html += '</div></div>';
+  });
+
+  document.getElementById('console-comparison-content').innerHTML = html;
+  updateMismatchBadge();
+}
+
+function updateMismatchBadge() {
+  const badge = document.getElementById('mismatch-badge');
+  if (!badge) return;
+  const count = countMismatches();
+  if (count > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function pushToRemFlow(hostname, tool, field, cmd) {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    queue.push({
+      id: 'cv-' + Date.now(),
+      cve: 'MISMATCH-' + tool.replace(/\s+/g, '-').toUpperCase(),
+      asset: hostname,
+      hostname: hostname,
+      description: 'Console/Endpoint mismatch: ' + tool + ' — ' + field,
+      command: cmd,
+      status: 'pending',
+      deployedAt: new Date().toISOString(),
+      source: 'TheValidator Console vs Endpoint'
+    });
+    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    showToast('📤 Mismatch remediation pushed to RemFlow queue');
+  } catch(e) { showToast('Error pushing to RemFlow'); }
+}
+
+// ===== LLM DEBUG ASSISTANT =====
+let ollamaModel = 'llama3.2';
+let chatHistory = [];
+let lastDebugPrompt = '';
+let isOllamaAvailable = null;
+let currentDebugContext = null;
+
+async function checkOllama() {
+  try {
+    const resp = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      isOllamaAvailable = true;
+      const data = await resp.json();
+      const models = (data.models || []).map(m => m.name);
+      const sel = document.getElementById('ollama-model');
+      if (models.length > 0) {
+        sel.innerHTML = models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+        if (models.includes(ollamaModel)) sel.value = ollamaModel;
+      }
+      document.getElementById('ollama-status').innerHTML = '<span style="color:var(--low)">✓ Connected (' + models.length + ' models)</span>';
+    } else {
+      throw new Error('Not OK');
+    }
+  } catch(e) {
+    isOllamaAvailable = false;
+    document.getElementById('ollama-status').innerHTML = '<span style="color:var(--critical)">✗ Not available</span>';
+  }
+}
+
+function openAIDebug(hostname, os, tool, consoleSays, endpointShows, mismatchField, severity) {
+  currentDebugContext = { hostname, os, tool, consoleSays, endpointShows, mismatchField, severity };
+
+  // Build context for LLM
+  const prompt = 'You are a senior Windows systems and security engineer. You\'re debugging an endpoint health mismatch between what the management console reports and what the endpoint actually shows. Be specific, give exact PowerShell commands and step-by-step troubleshooting.\n\n' +
+    'Hostname: ' + hostname + '\n' +
+    'OS: ' + os + '\n\n' +
+    'MISMATCH:\n' +
+    'Tool: ' + tool + '\n' +
+    'Console reports: ' + consoleSays + '\n' +
+    'Endpoint reports: ' + endpointShows + '\n' +
+    'Mismatch field: ' + mismatchField + '\n' +
+    'Severity: ' + severity + '\n\n' +
+    'Possible causes:\n' +
+    '- SCCM deployment failed or pending reboot\n' +
+    '- Update policy not applied to this host group\n' +
+    '- GPO or local policy blocking updates\n' +
+    '- Network connectivity issue preventing check-in\n' +
+    '- Service crash or hung process\n\n' +
+    'What is the likely root cause and how do I fix it? Give exact commands.';
+
+  lastDebugPrompt = prompt;
+
+  // Show chat panel
+  const overlay = document.getElementById('chat-overlay');
+  const panel = document.getElementById('chat-panel');
+  overlay.classList.add('open');
+  panel.classList.add('open');
+
+  // Clear previous and set context
+  const chatBody = document.getElementById('chat-body');
+  chatBody.innerHTML = '';
+
+  // Add context bubble
+  chatBody.innerHTML += '<div class="chat-bubble system">' +
+    '<strong>🔍 Debug Context:</strong><br>' +
+    '<b>Host:</b> ' + hostname + ' (' + os + ')<br>' +
+    '<b>Tool:</b> ' + tool + '<br>' +
+    '<b>Console:</b> ' + consoleSays + '<br>' +
+    '<b>Endpoint:</b> ' + endpointShows + '<br>' +
+    '<b>Field:</b> ' + mismatchField + ' | <b>Severity:</b> ' + severity +
+  '</div>';
+
+  // Add user prompt bubble
+  chatBody.innerHTML += '<div class="chat-bubble user">' +
+    'Debug this mismatch: Why does the console say one thing but the endpoint shows another? What\'s the root cause and exact fix?' +
+    '<div class="bubble-meta">🪄 Sending to Ollama...</div>' +
+  '</div>';
+
+  chatBody.scrollTop = chatBody.scrollHeight;
+
+  document.getElementById('retry-btn').style.display = 'none';
+
+  // Send to Ollama or fallback
+  if (isOllamaAvailable === null) {
+    checkOllama().then(() => sendToOllama(prompt));
+  } else {
+    sendToOllama(prompt);
+  }
+}
+
+function closeChatPanel() {
+  document.getElementById('chat-overlay').classList.remove('open');
+  document.getElementById('chat-panel').classList.remove('open');
+}
+
+async function sendToOllama(prompt) {
+  const chatBody = document.getElementById('chat-body');
+
+  if (!isOllamaAvailable) {
+    // Fallback: static troubleshooting guide
+    const fallback = generateFallbackGuide(currentDebugContext);
+    chatBody.innerHTML += '<div class="chat-bubble assistant">' +
+      '<strong>⚠️ Ollama not available</strong> — here\'s a static troubleshooting guide:<br><br>' + fallback +
+    '</div>';
+    chatBody.scrollTop = chatBody.scrollHeight;
+    document.getElementById('retry-btn').style.display = 'inline-flex';
+    return;
+  }
+
+  // Show typing indicator
+  const typingId = 'typing-' + Date.now();
+  chatBody.innerHTML += '<div class="typing-indicator" id="' + typingId + '"><span></span><span></span><span></span></div>';
+  chatBody.scrollTop = chatBody.scrollHeight;
+
+  try {
+    const resp = await fetch('http://localhost:11434/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: ollamaModel,
+        prompt: prompt,
+        stream: false,
+        options: { temperature: 0.7, num_predict: 1024 }
+      }),
+      signal: AbortSignal.timeout(60000)
+    });
+
+    // Remove typing indicator
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    const data = await resp.json();
+    const response = data.response || 'No response from model.';
+
+    // Format response with code blocks
+    const formatted = formatLLMResponse(response);
+
+    chatBody.innerHTML += '<div class="chat-bubble assistant">' +
+      formatted +
+      '<div class="bubble-meta">🤖 ' + ollamaModel + ' · ' + new Date().toLocaleTimeString() + '</div>' +
+    '</div>';
+
+    chatHistory.push({ role: 'user', content: prompt });
+    chatHistory.push({ role: 'assistant', content: response });
+
+  } catch(e) {
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+
+    chatBody.innerHTML += '<div class="chat-bubble assistant">' +
+      '<strong>⚠️ Error:</strong> ' + e.message + '<br><br>' +
+      '<em>Falling back to static troubleshooting guide:</em><br><br>' +
+      generateFallbackGuide(currentDebugContext) +
+    '</div>';
+  }
+
+  chatBody.scrollTop = chatBody.scrollHeight;
+  document.getElementById('retry-btn').style.display = 'inline-flex';
+}
+
+function formatLLMResponse(text) {
+  // Escape HTML
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Convert code blocks (```...```)
+  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, function(match, lang, code) {
+    return '<pre><code>' + code.trim() + '</code></pre>' +
+      '<button class="copy-btn" onclick="event.stopPropagation();copyCodeBlock(this)">📋 Copy code</button>';
+  });
+
+  // Convert inline code `...`
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Convert bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
+function copyCodeBlock(btn) {
+  const pre = btn.previousElementSibling;
+  if (pre && pre.tagName === 'PRE') {
+    const code = pre.textContent;
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 Code copied to clipboard');
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const chatBody = document.getElementById('chat-body');
+  chatBody.innerHTML += '<div class="chat-bubble user">' + msg.replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+    '<div class="bubble-meta">' + new Date().toLocaleTimeString() + '</div></div>';
+  chatBody.scrollTop = chatBody.scrollHeight;
+
+  // Build full prompt with context
+  let fullPrompt = msg;
+  if (currentDebugContext) {
+    fullPrompt = 'Context: Debugging a mismatch on ' + currentDebugContext.hostname +
+      ' for ' + currentDebugContext.tool + '. ' +
+      'Console says: ' + currentDebugContext.consoleSays + '. ' +
+      'Endpoint says: ' + currentDebugContext.endpointShows + '.\n\n' +
+      'User follow-up: ' + msg;
+  }
+  lastDebugPrompt = fullPrompt;
+  sendToOllama(fullPrompt);
+}
+
+function retryLastPrompt() {
+  if (lastDebugPrompt) {
+    document.getElementById('retry-btn').style.display = 'none';
+    const chatBody = document.getElementById('chat-body');
+    chatBody.innerHTML += '<div class="chat-bubble user">🔄 Retrying with a different approach...' +
+      '<div class="bubble-meta">' + new Date().toLocaleTimeString() + '</div></div>';
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    const altPrompt = lastDebugPrompt + '\n\nPlease approach this from a completely different angle. Consider alternative root causes you may have overlooked.';
+    sendToOllama(altPrompt);
+  }
+}
+
+function generateFallbackGuide(ctx) {
+  if (!ctx) return 'No debug context available.';
+
+  const rem = getRemediation(ctx.tool, ctx.mismatchField);
+
+  return '<div style="font-size:12px;line-height:1.6">' +
+    '<strong>🔍 Likely Root Causes:</strong><br>' +
+    '• SCCM/ConfigMgr deployment may have failed or requires a reboot<br>' +
+    '• GPO or local security policy blocking automatic updates<br>' +
+    '• Network connectivity issue preventing management server check-in<br>' +
+    '• Service hung or crashed — check Windows Event Logs<br>' +
+    '• Pending reboot blocking service update<br><br>' +
+    '<strong>🛠️ Recommended Fix:</strong><br>' +
+    '<em>' + rem.suggestion + '</em><br>' +
+    '<pre><code>' + rem.cmd + '</code></pre>' +
+    '<button class="copy-btn" onclick="event.stopPropagation();copyCodeBlock(this)">📋 Copy code</button><br><br>' +
+    '<strong>📋 Troubleshooting Steps:</strong><br>' +
+    '1. Verify network connectivity: <code>Test-NetConnection management-server.corp.local -Port 443</code><br>' +
+    '2. Check for pending reboots: <code>Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager" -Name PendingFileRenameOperations</code><br>' +
+    '3. Review Event Logs: <code>Get-WinEvent -LogName System -MaxEvents 50 | Where-Object {$_.LevelDisplayName -eq "Error"}</code><br>' +
+    '4. Verify service status: <code>Get-Service *' + ctx.tool.split(' ')[0] + '*</code><br>' +
+    '5. Check GPO application: <code>gpresult /r /scope computer</code><br>' +
+    '6. Force SCCM client check-in: <code>Invoke-WMIMethod -Namespace root\\ccm -Class SMS_CLIENT -Name TriggerSchedule "{00000000-0000-0000-0000-000000000021}"</code><br>' +
+  '</div>';
+}
+
+// Console drop zone
+function initConsoleDropZone() {
+  const dropZone = document.getElementById('console-drop-zone');
+  if (!dropZone) return;
+
+  dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleConsoleCSV(files[0]);
+  });
+}
 function checkCrossToolQueue() {
   try { return JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]').filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
   catch(e) { return []; }
@@ -2655,6 +3456,7 @@ function initFilters(){
 initFilters();
 initGPOTabs();
 initDropZone();
+initConsoleDropZone();
 handleHash();
 
 // Start fetching live software versions (non-blocking)
@@ -2668,6 +3470,9 @@ fetchSoftwareVersions().then(() => {
 
 // Update software badge on page load
 updateSoftwareBadge();
+
+// Check Ollama availability (non-blocking)
+checkOllama();
 </script>
 
 </body>
