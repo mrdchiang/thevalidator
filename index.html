@@ -1316,7 +1316,7 @@ tbody tr:last-child td{border-bottom:none}
 </div><!-- /main -->
 
 <script>
-// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = 'security-tools:contract-version';  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
+// ════ Contract Version Check ─────────────────────────────────(function(){  var CV = KEYS.CONTRACT_VERSION_KEY;  var VER = '1.0.0';  try {    var stored = localStorage.getItem(CV);    if (!stored) { localStorage.setItem(CV, VER); return; }    if (stored !== VER) {      var b = document.createElement('div');      b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';      b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };      document.body.insertBefore(b, document.body.firstChild);    }  } catch(e) {}})();
 // ===== DEBUG ERROR CATCHER =====
 window.onerror = function(msg, url, line, col, err) {
   var el = document.createElement('div');
@@ -1325,6 +1325,18 @@ window.onerror = function(msg, url, line, col, err) {
   document.body.appendChild(el);
   setTimeout(function(){ el.remove(); }, 10000);
   return false;
+};
+
+// ===== LOCAL STORAGE KEYS =====
+const KEYS = {
+  CONTRACT_VERSION_KEY:    'security-tools:contract-version',
+  VALIDATOR_GPO_BASELINE:  'security-tools:validator-gpo-baseline',
+  VALIDATOR_GPO_HISTORY:   'security-tools:validator-gpo-baseline-history',
+  REMEDIATION_QUEUE:       'security-tools:remediation-queue',
+  VALIDATED_REMEDIATIONS:  'security-tools:validated-remediations',
+  LAST_REMEDIATION:        'security-tools:last-remediation',
+  LAUNCHPAD_QUEUE:         'security-tools:launchpad-queue',
+  LAST_LAUNCHPAD_PUSH:     'security-tools:last-launchpad-push',
 };
 
 // ===== DATA =====
@@ -1438,28 +1450,28 @@ const CIS_LOOKUP = buildCISLookup();
 
 // ===== GPO BASELINE (localStorage) =====
 function getGPOBaseline() {
-  try { return JSON.parse(localStorage.getItem('security-tools:validator-gpo-baseline') || '[]'); }
+  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_GPO_BASELINE) || '[]'); }
   catch(e) { return []; }
 }
 function setGPOBaseline(data) {
-  localStorage.setItem('security-tools:validator-gpo-baseline', JSON.stringify(data));
+  localStorage.setItem(KEYS.VALIDATOR_GPO_BASELINE, JSON.stringify(data));
 }
 function clearGPOBaseline() {
-  localStorage.removeItem('security-tools:validator-gpo-baseline');
+  localStorage.removeItem(KEYS.VALIDATOR_GPO_BASELINE);
   alert('GPO baseline cleared.');
   showPage('gpo-baseline');
 }
 
 // GPO Drift history (array of snapshots)
 function getGPOBaselineHistory() {
-  try { return JSON.parse(localStorage.getItem('security-tools:validator-gpo-baseline-history') || '[]'); }
+  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATOR_GPO_HISTORY) || '[]'); }
   catch(e) { return []; }
 }
 function saveGPOBaselineHistory(baseline) {
   const history = getGPOBaselineHistory();
   history.push({ timestamp: new Date().toISOString(), policies: baseline.length, snapshot: baseline.map(p => ({name:p.name, value:p.value, status:p.status})) });
   if (history.length > 10) history.shift();
-  localStorage.setItem('security-tools:validator-gpo-baseline-history', JSON.stringify(history));
+  localStorage.setItem(KEYS.VALIDATOR_GPO_HISTORY, JSON.stringify(history));
 }
 
 // ===== DEMO GPO BASELINE DATA =====
@@ -2186,16 +2198,16 @@ function renderPendingVerifications() {
 
 function verifySingleItem(cve) {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
-    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
     const item = queue.find(i => i.cve === cve || i.id === cve);
     if (!item) { showToast('Item not found in queue'); return; }
     item.status = 'verified';
     item.verifiedAt = new Date().toISOString();
     item.verifiedBy = 'TheValidator';
     validated.push({...item});
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
-    localStorage.setItem('security-tools:validated-remediations', JSON.stringify(validated));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
     showToast('✅ Verified: ' + (item.cve || cve));
     renderPendingVerifications();
     renderDashboard();
@@ -3303,7 +3315,7 @@ function updateMismatchBadge() {
 
 function pushToRemFlow(hostname, tool, field, cmd) {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     queue.push({
       id: 'cv-' + Date.now(),
       cve: 'MISMATCH-' + tool.replace(/\s+/g, '-').toUpperCase(),
@@ -3315,7 +3327,7 @@ function pushToRemFlow(hostname, tool, field, cmd) {
       deployedAt: new Date().toISOString(),
       source: 'TheValidator Console vs Endpoint'
     });
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     showToast('📤 Mismatch remediation pushed to RemFlow queue');
   } catch(e) { showToast('Error pushing to RemFlow'); }
 }
@@ -3603,17 +3615,17 @@ function initConsoleDropZone() {
   });
 }
 function checkCrossToolQueue() {
-  try { return JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]').filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
+  try { return JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]').filter(i => i.status === 'pending' || (i.status === 'deployed' && !i.verifiedAt)); }
   catch(e) { return []; }
 }
 function checkValidatedRemediations() {
-  try { return JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]'); }
+  try { return JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]'); }
   catch(e) { return []; }
 }
 function verifyPendingRemediations() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
-    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     if (pending.length === 0) return 0;
     const now = new Date().toISOString();
@@ -3623,9 +3635,9 @@ function verifyPendingRemediations() {
       item.verifiedBy = 'TheValidator';
       validated.push({...item, verifiedAt: now, verifiedBy: 'TheValidator'});
     });
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
-    localStorage.setItem('security-tools:validated-remediations', JSON.stringify(validated));
-    localStorage.setItem('security-tools:last-remediation', JSON.stringify({action: 'verified', count: pending.length, at: now}));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
+    localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify({action: 'verified', count: pending.length, at: now}));
     return pending.length;
   } catch(e) { return 0; }
 }
@@ -3754,7 +3766,7 @@ function updateLifecycleBadge() {
 
 function importFromRemFlow() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     const pending = queue.filter(i => i.status === 'pending' || i.status === 'deployed');
     const deployed = pending.filter(i => i.status === 'deployed').length;
     const pendingCount = pending.filter(i => i.status === 'pending').length;
@@ -3818,8 +3830,8 @@ function verifyPipelineItem(index) {
   try {
     const item = pipelineVerificationItems[index];
     if (!item) return;
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
-    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
 
     item.status = 'verified';
     item.verifiedAt = new Date().toISOString();
@@ -3834,8 +3846,8 @@ function verifyPipelineItem(index) {
     }
     validated.push({...item});
 
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
-    localStorage.setItem('security-tools:validated-remediations', JSON.stringify(validated));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify(validated));
 
     pipelineVerificationItems.splice(index, 1);
     renderVerificationItems();
@@ -3859,10 +3871,10 @@ function renderLaunchpadStatus() {
 
 function pushVerifiedToLaunchpad() {
   try {
-    const validated = JSON.parse(localStorage.getItem('security-tools:validated-remediations') || '[]');
+    const validated = JSON.parse(localStorage.getItem(KEYS.VALIDATED_REMEDIATIONS) || '[]');
     if (validated.length === 0) { showToast('No verified items to push'); return; }
 
-    const launchpad = JSON.parse(localStorage.getItem('security-tools:launchpad-queue') || '[]');
+    const launchpad = JSON.parse(localStorage.getItem(KEYS.LAUNCHPAD_QUEUE) || '[]');
     validated.forEach(item => {
       launchpad.push({
         ...item,
@@ -3871,9 +3883,9 @@ function pushVerifiedToLaunchpad() {
       });
     });
 
-    localStorage.setItem('security-tools:launchpad-queue', JSON.stringify(launchpad));
-    localStorage.setItem('security-tools:validated-remediations', JSON.stringify([]));
-    localStorage.setItem('security-tools:last-launchpad-push', JSON.stringify({count: validated.length, at: new Date().toISOString()}));
+    localStorage.setItem(KEYS.LAUNCHPAD_QUEUE, JSON.stringify(launchpad));
+    localStorage.setItem(KEYS.VALIDATED_REMEDIATIONS, JSON.stringify([]));
+    localStorage.setItem(KEYS.LAST_LAUNCHPAD_PUSH, JSON.stringify({count: validated.length, at: new Date().toISOString()}));
 
     showToast('📤 Pushed ' + validated.length + ' verified items to Launchpad');
     renderPipelineStatusBar();
@@ -3910,8 +3922,8 @@ function refreshPipelineStatus() {
 
 function clearRemFlowQueue() {
   if (!confirm('Clear the RemFlow remediation queue? This cannot be undone.')) return;
-  localStorage.removeItem('security-tools:remediation-queue');
-  localStorage.removeItem('security-tools:validated-remediations');
+  localStorage.removeItem(KEYS.REMEDIATION_QUEUE);
+  localStorage.removeItem(KEYS.VALIDATED_REMEDIATIONS);
   pipelineVerificationItems = [];
   showToast('🗑️ RemFlow queue cleared');
   renderPipelinePage();
@@ -4214,7 +4226,7 @@ function renderTimeline() {
 
 function pushReplacementToRemFlow() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     let pushedCount = 0;
 
     assets.forEach(a => {
@@ -4241,7 +4253,7 @@ function pushReplacementToRemFlow() {
       pushedCount++;
     });
 
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     showToast('📤 Created replacement project with ' + pushedCount + ' assets in RemFlow queue');
     renderPipelineStatusBar();
   } catch(e) { showToast('Error pushing to RemFlow'); }
