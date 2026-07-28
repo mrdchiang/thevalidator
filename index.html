@@ -884,7 +884,7 @@ tbody tr:last-child td{border-bottom:none}
             <button class="btn btn-primary btn-sm" onclick="runHealthCheckOnAsset()">⚡ Run Health Check Now</button>
             <button class="btn btn-sm" onclick="exportEvidenceCSV(detailAsset.hostname)">📊 Export Evidence</button>
             <button class="btn btn-sm" onclick="exportAllCommands(detailAsset.hostname)" style="border-color:var(--low)">📋 Export Fixes for PDQ/SCCM</button>
-            <a href="https://mrdchiang.github.io/amp-shield/#/findings" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
+            <a href="https://mrdchiang.github.io/shieldview/#/findings" target="_blank" class="btn btn-sm" id="shield-link" style="margin-top:0">🔍 View CVEs in ShieldView</a>
             <a href="https://mrdchiang.github.io/remflow/#/remediations" target="_blank" class="btn btn-sm" id="remflow-link" style="margin-top:0">🛠️ Remediate via RemFlow</a>
           </div>
           <div class="compare-match" style="font-size:13px;color:var(--text-muted);margin-top:4px">
@@ -2624,7 +2624,7 @@ function showDetail(hostname){
     '</tr>';
   }).join('');
 
-  document.getElementById('shield-link').href = 'https://mrdchiang.github.io/amp-shield/#/findings';
+  document.getElementById('shield-link').href = 'https://mrdchiang.github.io/shieldview/#/findings';
   document.getElementById('remflow-link').href = 'https://mrdchiang.github.io/remflow/#/remediations';
 
   const prefix = (a.hostname || '').split(/[-_]/)[0].toUpperCase();
