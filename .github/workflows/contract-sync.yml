@@ -1,0 +1,24 @@
+name: Contract sync
+
+on:
+  pull_request:
+    paths:
+      - js/shared/contract.js
+      - .github/workflows/contract-sync.yml
+  push:
+    branches: [main]
+    paths:
+      - js/shared/contract.js
+      - .github/workflows/contract-sync.yml
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: mrdchiang/launchpad/.github/workflows/verify-contract.yml@main
+    with:
+      contract-path: js/shared/contract.js
