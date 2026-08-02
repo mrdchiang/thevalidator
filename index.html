@@ -777,6 +777,17 @@ tbody tr:last-child td{border-bottom:none}
     <div class="page active" id="page-dashboard">
       <div class="stats-grid" id="dashboard-stats"></div>
 
+      <!-- Unified Platform Compliance -->
+      <div class="card" id="unified-compliance-card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h3>🖥️ Unified Platform Compliance</h3>
+          <span style="font-size:11px;color:var(--text-muted)">Aggregated across Intune · Kandji · Fleet</span>
+        </div>
+        <div class="card-body" id="unified-compliance-body">
+          <div style="color:var(--text-muted);padding:8px 0">Loading cross-platform data...</div>
+        </div>
+      </div>
+
       <!-- Pipeline Status Bar -->
       <div class="card" id="pipeline-status-card" style="margin-bottom:20px">
         <div class="card-header">
@@ -2220,6 +2231,47 @@ function getCISScores() {
 }
 
 // ===== DASHBOARD =====
+function renderUnifiedCompliance(){
+  const platforms = [
+    { name: 'Windows', icon: '🪟', tool: 'Intune', total: 1500, compliant: 1487, color: '#0066ff' },
+    { name: 'macOS', icon: '🍎', tool: 'Kandji', total: 600, compliant: 588, color: '#7c3aed' },
+    { name: 'Linux', icon: '🐧', tool: 'Fleet', total: 400, compliant: 391, color: '#22cc66' },
+  ];
+  const allTotal = platforms.reduce((s,p) => s + p.total, 0);
+  const allCompliant = platforms.reduce((s,p) => s + p.compliant, 0);
+  const allPct = Math.round((allCompliant / allTotal) * 100);
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center">';
+
+  platforms.forEach(p => {
+    const pct = Math.round((p.compliant / p.total) * 100);
+    html += '<div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:16px">' +
+      '<div style="font-size:24px;margin-bottom:4px">' + p.icon + '</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">' + p.name + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">via ' + p.tool + '</div>' +
+      '<div style="font-size:26px;font-weight:700;color:' + (pct>=99?'var(--ok)':'var(--warning)') + '">' + pct + '%</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + p.compliant.toLocaleString() + ' / ' + p.total.toLocaleString() + '</div>' +
+      '<div style="margin-top:8px;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + p.color + ';border-radius:3px;transition:width 0.5s"></div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  html += '<div style="background:var(--bg-elevated);border:2px solid var(--accent);border-radius:10px;padding:16px">' +
+    '<div style="font-size:24px;margin-bottom:4px">🌐</div>' +
+    '<div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:2px">All Platforms</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Unified Score</div>' +
+    '<div style="font-size:26px;font-weight:700;color:' + (allPct>=99?'var(--ok)':'var(--warning)') + '">' + allPct + '%</div>' +
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + allCompliant.toLocaleString() + ' / ' + allTotal.toLocaleString() + '</div>' +
+    '<div style="margin-top:8px;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden">' +
+      '<div style="height:100%;width:' + allPct + '%;background:var(--accent);border-radius:3px;transition:width 0.5s"></div>' +
+    '</div>' +
+  '</div>';
+
+  html += '</div>';
+  document.getElementById('unified-compliance-body').innerHTML = html;
+}
+
 function renderDashboard(){
   const total=assets.length;
   const healthy=assets.filter(a=>a.health==='healthy').length;
@@ -2236,6 +2288,9 @@ function renderDashboard(){
     '<div class="stat-card critical"><div class="stat-label">Critical</div><div class="stat-value">'+critical+'</div><div class="stat-sub">Requires immediate attention</div></div>' +
     '<div class="stat-card" style="border-color:'+(offline>0?'var(--critical)':'var(--border)')+'"><div class="stat-label">Offline</div><div class="stat-value" style="color:'+(offline>0?'var(--critical)':'var(--text-primary)')+'">'+offline+'</div><div class="stat-sub">No recent check-in</div></div>' +
     '<div class="stat-card healthy"><div class="stat-label">Compliance Rate</div><div class="stat-value">'+compliance+'%</div><div class="stat-sub">Passing all checks</div></div>';
+
+  // Unified Platform Compliance
+  renderUnifiedCompliance();
 
   // Pipeline Status Bar
   renderPipelineStatusBar();
