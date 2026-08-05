@@ -144,6 +144,11 @@ input,select,button{font-family:inherit;font-size:inherit}
   overflow: hidden;
 }
 
+/* Align shared suite-health bar with content area */
+.suite-health {
+  margin-left: var(--sidebar-w) !important;
+}
+
 /* ===== TOPBAR ===== */
 .topbar {
   height: var(--topbar-h);
@@ -624,6 +629,7 @@ tbody tr:last-child td{border-bottom:none}
   .nav-item span:not(.icon){display:none}
   .sidebar-footer{display:none}
   .main{margin-left:60px}
+  .suite-health{margin-left:60px !important}
   .detail-grid,.compare-grid{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .topbar{flex-wrap:wrap;padding:0 12px;gap:4px}
