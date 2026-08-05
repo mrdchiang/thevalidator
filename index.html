@@ -797,7 +797,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="card" id="unified-compliance-card" style="margin-bottom:20px">
         <div class="card-header">
           <h3>🖥️ Unified Platform Compliance</h3>
-          <span style="font-size:11px;color:var(--text-muted)">Aggregated across Intune · Kandji · Fleet</span>
+          <span style="font-size:11px;color:var(--text-muted)">Aggregated across Intune · macOS MDM · Fleet</span>
         </div>
         <div class="card-body" id="unified-compliance-body">
           <div style="color:var(--text-muted);padding:8px 0">Loading cross-platform data...</div>
@@ -1178,7 +1178,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="card">
         <div class="card-header">
           <h3>📥 Import Console Export</h3>
-          <span style="font-size:12px;color:var(--text-muted)">Simulates pulling from SCCM / Tenable / CrowdStrike consoles</span>
+          <span style="font-size:12px;color:var(--text-muted)">Simulates pulling from SCCM / Scanner / Endpoint Protection consoles</span>
         </div>
         <div class="card-body">
           <div class="console-import-bar">
@@ -2252,7 +2252,7 @@ function getCISScores() {
 function renderUnifiedCompliance(){
   const platforms = [
     { name: 'Windows', icon: '🪟', tool: 'Intune', total: 1500, compliant: 1487, color: '#0066ff' },
-    { name: 'macOS', icon: '🍎', tool: 'Kandji', total: 600, compliant: 588, color: '#7c3aed' },
+    { name: 'macOS', icon: '🍎', tool: 'macOS MDM', total: 600, compliant: 588, color: '#7c3aed' },
     { name: 'Linux', icon: '🐧', tool: 'Fleet', total: 400, compliant: 391, color: '#22cc66' },
   ];
   const allTotal = platforms.reduce((s,p) => s + p.total, 0);
@@ -3196,15 +3196,15 @@ setInterval(updateClock,10000);updateClock();
 
 // ===== CONSOLE VS ENDPOINT COMPARISON ENGINE =====
 const CONSOLE_TOOLS = [
-  'CrowdStrike Falcon Sensor',
+  'Endpoint Protection Agent',
   'Windows Defender',
-  'Tenable Agent',
-  'Zscaler Client',
+  'Vulnerability Scanner Agent',
+  'ZTNA Client',
   'SCCM Client',
   'BitLocker',
   'OS Patch Level',
   'LAPS',
-  'Duo/MFA Agent'
+  'Multi-Factor Auth Agent'
 ];
 
 let consoleEndpointData = []; // {hostname, checks:[{tool,consoleSays,endpointShows,match,mismatchField,severity}]}
@@ -3226,7 +3226,7 @@ function generateConsoleDemoData() {
       let consoleSays, endpointShows, mismatchField = null, severity = null;
 
       switch (tool) {
-        case 'CrowdStrike Falcon Sensor':
+        case 'Endpoint Protection Agent':
           if (match) {
             const v = pick(['v7.5.1','v7.5.0','v7.4.3']);
             consoleSays = v + ' — Running — Policy: Standard';
@@ -3249,7 +3249,7 @@ function generateConsoleDemoData() {
             else { endpointShows = 'Running — Definitions: Unknown'; mismatchField = 'Definition State'; severity = 'Low'; }
           }
           break;
-        case 'Tenable Agent':
+        case 'Vulnerability Scanner Agent':
           if (match) {
             const v = pick(['v6.5.1','v6.5.0','v6.4.3']);
             consoleSays = v + ' — Linked';
@@ -3261,7 +3261,7 @@ function generateConsoleDemoData() {
             else { endpointShows = 'Not Installed'; mismatchField = 'Installed'; severity = 'Critical'; }
           }
           break;
-        case 'Zscaler Client':
+        case 'ZTNA Client':
           if (match) {
             const v = pick(['v4.5.1','v4.5.0']);
             consoleSays = v + ' — Tunnel Up — Connected';
@@ -3315,7 +3315,7 @@ function generateConsoleDemoData() {
             else { endpointShows = 'Installed — Not Configured'; mismatchField = 'Configured'; severity = 'High'; }
           }
           break;
-        case 'Duo/MFA Agent':
+        case 'Multi-Factor Auth Agent':
           if (match) {
             const v = pick(['v5.2.1','v5.2.0']);
             consoleSays = v + ' — Enrolled';
@@ -3338,25 +3338,25 @@ function generateConsoleDemoData() {
 
 // Mismatch Remediation Map
 const REMEDIATION_MAP = {
-  'CrowdStrike Falcon Sensor': {
-    'Version': { suggestion: 'Sensor version behind console-reported version — likely SCCM deployment failed or pending reboot.', cmd: 'Update-CrowdStrikeSensor -PolicyName Standard', action: 'ps' },
-    'Running State': { suggestion: 'CrowdStrike service is not running on endpoint.', cmd: 'Start-Service CSFalconService; Get-Service CSFalconService', action: 'ps' },
-    'Policy Group': { suggestion: 'Policy group assignment mismatch — sensor may not have received updated policy.', cmd: 'Update-CrowdStrikeSensor -PolicyName Standard -Force', action: 'ps' }
+  'Endpoint Protection Agent': {
+    'Version': { suggestion: 'Sensor version behind console-reported version — likely SCCM deployment failed or pending reboot.', cmd: 'Update-EndpointProtectionAgent -PolicyName Standard', action: 'ps' },
+    'Running State': { suggestion: 'Endpoint Protection Agent service is not running on endpoint.', cmd: 'Start-Service EPAService; Get-Service EPAService', action: 'ps' },
+    'Policy Group': { suggestion: 'Policy group assignment mismatch — sensor may not have received updated policy.', cmd: 'Update-EndpointProtectionAgent -PolicyName Standard -Force', action: 'ps' }
   },
   'Windows Defender': {
     'Definition Age': { suggestion: 'Definitions are stale — Windows Update or SCCM SUP may be blocked.', cmd: 'Update-MpSignature -UpdateSource MicrosoftUpdateServer', action: 'ps' },
     'Running State': { suggestion: 'Windows Defender real-time protection is stopped.', cmd: 'Set-MpPreference -DisableRealtimeMonitoring $false; Start-Service WinDefend', action: 'ps' },
     'Definition State': { suggestion: 'Definition state unknown — possible corruption of signature database.', cmd: '& "C:\\Program Files\\Windows Defender\\MpCmdRun.exe" -removedefinitions -dynamicsignatures; & "C:\\Program Files\\Windows Defender\\MpCmdRun.exe" -signatureupdate', action: 'ps' }
   },
-  'Tenable Agent': {
-    'Version': { suggestion: 'Tenable agent version is behind — needs redeployment.', cmd: 'msiexec /i Tenable-Nessus-Agent-x64.msi /qn NESSUS_GROUPS="All" NESSUS_SERVER="nessus.corp.local:8834"', action: 'installer' },
-    'Linked Status': { suggestion: 'Agent is unlinked from Tenable console — reinstall with linking key required.', cmd: 'nessuscli agent link --key=YOUR_LINKING_KEY --host=nessus.corp.local --port=8834', action: 'cli' },
-    'Installed': { suggestion: 'Tenable agent not installed — deploy via SCCM or GPO software install.', cmd: 'msiexec /i Tenable-Nessus-Agent-x64.msi /qn NESSUS_GROUPS="All" NESSUS_SERVER="nessus.corp.local:8834"', action: 'installer' }
+  'Vulnerability Scanner Agent': {
+    'Version': { suggestion: 'Vulnerability Scanner agent version is behind — needs redeployment.', cmd: 'msiexec /i Scanner-Agent-x64.msi /qn SCANNER_GROUPS="All" SCANNER_SERVER="scanner.corp.local:8834"', action: 'installer' },
+    'Linked Status': { suggestion: 'Agent is unlinked from Scanner console — reinstall with linking key required.', cmd: 'scannercli agent link --key=YOUR_LINKING_KEY --host=scanner.corp.local --port=8834', action: 'cli' },
+    'Installed': { suggestion: 'Vulnerability Scanner agent not installed — deploy via SCCM or GPO software install.', cmd: 'msiexec /i Scanner-Agent-x64.msi /qn SCANNER_GROUPS="All" SCANNER_SERVER="scanner.corp.local:8834"', action: 'installer' }
   },
-  'Zscaler Client': {
-    'Version': { suggestion: 'Zscaler client version outdated — push updated package.', cmd: 'msiexec /i Zscaler-Client-Connector.msi /qn', action: 'installer' },
-    'Tunnel Status': { suggestion: 'Zscaler tunnel is down — may have connectivity or authentication issues.', cmd: 'Restart-Service ZSAService; & "C:\\Program Files\\Zscaler\\ZSATunnel.exe" --reconnect', action: 'ps' },
-    'Installed': { suggestion: 'Zscaler client not installed on this endpoint.', cmd: 'msiexec /i Zscaler-Client-Connector.msi /qn CLOUDNAME=zscaler', action: 'installer' }
+  'ZTNA Client': {
+    'Version': { suggestion: 'ZTNA client version outdated — push updated package.', cmd: 'msiexec /i ZTNA-Client-Connector.msi /qn', action: 'installer' },
+    'Tunnel Status': { suggestion: 'ZTNA tunnel is down — may have connectivity or authentication issues.', cmd: 'Restart-Service ZTNAService; & "C:\\Program Files\\ZTNA Client\\ZTNATunnel.exe" --reconnect', action: 'ps' },
+    'Installed': { suggestion: 'ZTNA client not installed on this endpoint.', cmd: 'msiexec /i ZTNA-Client-Connector.msi /qn CLOUDNAME=ztna-provider', action: 'installer' }
   },
   'SCCM Client': {
     'Version': { suggestion: 'SCCM client version behind — client push or AD system discovery may be failing.', cmd: 'Start-Service CcmExec; & "C:\\Windows\\CCM\\ccmrepair.exe"', action: 'ps' },
@@ -3376,10 +3376,10 @@ const REMEDIATION_MAP = {
     'Installed': { suggestion: 'LAPS not installed — deploy via GPO or SCCM.', cmd: 'Add-WindowsCapability -Online -Name LAPS~~~~0.0.1.0', action: 'ps' },
     'Configured': { suggestion: 'LAPS installed but not configured — configure via GPO.', cmd: 'Update-LapsADSchema; Set-LapsPolicy -ADBackupDirectory "\\\\corp-dc-01\\LAPS" -PassphraseLength 14', action: 'ps' }
   },
-  'Duo/MFA Agent': {
-    'Version': { suggestion: 'Duo/MFA agent version outdated.', cmd: 'msiexec /i DuoWindowsLogon-x64.msi /qn IKEY=YOUR_IKEY SKEY=YOUR_SKEY HOST=api-YOURHOST.duosecurity.com', action: 'installer' },
-    'Enrollment': { suggestion: 'Agent installed but not enrolled — re-register required.', cmd: '& "C:\\Program Files\\Duo Security\\DuoCredProv\\DuoCredProv.exe" -register', action: 'ps' },
-    'Installed': { suggestion: 'Duo/MFA agent not installed on this endpoint.', cmd: 'msiexec /i DuoWindowsLogon-x64.msi /qn IKEY=YOUR_IKEY SKEY=YOUR_SKEY HOST=api-YOURHOST.duosecurity.com', action: 'installer' }
+  'Multi-Factor Auth Agent': {
+    'Version': { suggestion: 'MFA agent version outdated.', cmd: 'msiexec /i MFA-Agent-x64.msi /qn REGKEY=YOUR_KEY HOST=api-YOURHOST.mfa-provider.local', action: 'installer' },
+    'Enrollment': { suggestion: 'Agent installed but not enrolled — re-register required.', cmd: '& "C:\\Program Files\\MFA Provider\\MFACredProv\\MFACredProv.exe" -register', action: 'ps' },
+    'Installed': { suggestion: 'MFA agent not installed on this endpoint.', cmd: 'msiexec /i MFA-Agent-x64.msi /qn REGKEY=YOUR_KEY HOST=api-YOURHOST.mfa-provider.local', action: 'installer' }
   }
 };
 
