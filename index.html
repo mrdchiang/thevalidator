@@ -626,6 +626,21 @@ tbody tr:last-child td{border-bottom:none}
   .main{margin-left:60px}
   .detail-grid,.compare-grid{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .topbar{flex-wrap:wrap;padding:0 12px;gap:4px}
+  .topbar .time{font-size:11px}
+  .pipeline-bar .pipe-arrow{display:none}
+  .pipeline-bar{gap:8px}
+  .pipeline-bar .pipe-segment{min-width:140px;padding:8px 12px;font-size:12px}
+  .chat-panel{width:100vw;right:-100vw}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr}
+  .content{padding:12px}
+  .toolbar{gap:6px}
+  .search-box{min-width:100%}
+  .filter-select{min-width:100px;flex:1}
+  .card-body{padding:12px}
+  .topbar .page-title{font-size:14px}
 }
 
 /* ===== PIPELINE STATUS BAR ===== */
@@ -1010,6 +1025,7 @@ tbody tr:last-child td{border-bottom:none}
             <button class="btn btn-sm btn-primary" onclick="exportSoftwareCSV()" style="white-space:nowrap">📥 Export CSV</button>
           </div>
           <div id="software-summary" style="display:flex;gap:16px;padding:12px 0;flex-wrap:wrap"></div>
+          <div class="table-wrap">
           <table class="data-table" id="software-table">
             <thead><tr>
               <th onclick="sortSoftware('name')" style="cursor:pointer">Software ↕</th>
@@ -1022,6 +1038,7 @@ tbody tr:last-child td{border-bottom:none}
             </tr></thead>
             <tbody id="software-tbody"></tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>
