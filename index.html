@@ -144,11 +144,6 @@ input,select,button{font-family:inherit;font-size:inherit}
   overflow: hidden;
 }
 
-/* Align shared suite-health bar with content area */
-.suite-health {
-  margin-left: var(--sidebar-w) !important;
-}
-
 /* ===== TOPBAR ===== */
 .topbar {
   height: var(--topbar-h);
@@ -638,10 +633,6 @@ tbody tr:last-child td{border-bottom:none}
   .pipeline-bar{gap:8px}
   .pipeline-bar .pipe-segment{min-width:140px;padding:8px 12px;font-size:12px}
   .chat-panel{width:100vw;right:-100vw}
-  .suite-health-step{display:none}
-  .suite-health-pill{padding:1px 6px;font-size:10px;min-height:18px}
-  .suite-health{gap:4px;padding:6px 10px;font-size:10px}
-  .suite-health strong{font-size:10px}
 }
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr}
@@ -651,8 +642,6 @@ tbody tr:last-child td{border-bottom:none}
   .filter-select{min-width:100px;flex:1}
   .card-body{padding:12px}
   .topbar .page-title{font-size:14px}
-  .suite-health-pill{font-size:9px;padding:1px 4px}
-  .suite-health{gap:2px;padding:4px 6px}
 }
 
 /* ===== PIPELINE STATUS BAR ===== */
@@ -4778,10 +4767,5 @@ checkOllama();
 })();
 </script>
 
-
-<script type="module">
-import { installSuiteHealth } from '/launchpad/shared/suite-health.js';
-installSuiteHealth("TheValidator");
-</script>
 </body>
 </html>
